@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MessageSquarePlus, Users, Settings, X, LogOut } from "lucide-react";
+import { Search, MessageSquarePlus, Users, Settings, X, LogOut, Phone, Video, Mic, CheckCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import AvatarBubble from "./AvatarBubble";
@@ -202,7 +202,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
                 </div>
                 {selectedMembers.includes(u.id) && (
                   <div className="ml-auto h-4 w-4 rounded-full bg-primary flex items-center justify-center shrink-0">
-                    <span className="text-[8px] text-white font-bold">✓</span>
+                    <CheckCheck className="h-2.5 w-2.5 text-white" />
                   </div>
                 )}
               </button>
@@ -231,7 +231,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
               className="w-full text-xs gradient-primary text-primary-foreground rounded-lg py-2 font-semibold"
             >
               {groupNameError
-                ? "⚠ Enter a group name first"
+                ? "Enter a group name first"
                 : `Create Group · ${selectedMembers.length} member${selectedMembers.length > 1 ? "s" : ""}`}
             </button>
           )}
@@ -272,7 +272,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
                 <AvatarBubble letter={u.username[0]?.toUpperCase() || "?"} status={u.status as "online" | "offline"} size="sm" imageUrl={u.avatar_url} />
                 <div className="flex flex-col min-w-0">
                   <span className="text-sm font-medium text-foreground truncate">{u.display_name || u.username}</span>
-                  <span className="text-[11px] text-muted-foreground">@{u.username} · {u.status === "online" ? "🟢 Online" : "⚫ Offline"}</span>
+                  <span className="text-[11px] text-muted-foreground">@{u.username} · {u.status === "online" ? "Online" : "Offline"}</span>
                 </div>
               </button>
             ))}
@@ -319,9 +319,14 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
                 </span>
               </div>
               <div className="flex items-center justify-between mt-0.5 gap-1">
-                <p className="text-xs text-muted-foreground truncate">
-                  {chat.lastMessage?.content || "No messages yet"}
-                </p>
+                <div className="flex items-center gap-1 min-w-0 flex-1">
+                  {chat.lastMessage?.file_type === "call/audio" && <Phone className="h-3 w-3 text-muted-foreground shrink-0" />}
+                  {chat.lastMessage?.file_type === "call/video" && <Video className="h-3 w-3 text-muted-foreground shrink-0" />}
+                  {chat.lastMessage?.file_type?.startsWith("audio/") && <Mic className="h-3 w-3 text-muted-foreground shrink-0" />}
+                  <p className="text-xs text-muted-foreground truncate">
+                    {chat.lastMessage?.content || "No messages yet"}
+                  </p>
+                </div>
                 {chat.unreadCount > 0 && (
                   <span className="shrink-0 h-5 min-w-[20px] px-1.5 rounded-full gradient-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                     {chat.unreadCount}

@@ -30,6 +30,7 @@ interface Message {
   content: string;
   is_read: boolean;
   created_at: string;
+  file_type?: string | null;
   reply_to_id?: string | null;
   reply_to_text?: string | null;
   reply_to_sender?: string | null;

@@ -77,6 +77,7 @@ export function useWebRTC() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const ringtoneRef = useRef(createRingtone());
   const callTypeRef = useRef<"audio" | "video">("audio");
+  const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
 
   // Send a call status message into the chat
   const sendCallMessage = useCallback(async (roomId: string, text: string, type: "call/audio" | "call/video") => {
@@ -128,6 +129,7 @@ export function useWebRTC() {
     remoteUserIdRef.current = null;
     chatRoomIdRef.current = null;
     callStartTimeRef.current = 0;
+    iceCandidateQueue.current = [];
     setCallDuration(0);
   }, [sendCallMessage]);
 
@@ -323,12 +325,19 @@ export function useWebRTC() {
             case "answer":
               if (peerConnection.current) {
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(signal.data));
+                // Flush queued ICE candidates
+                for (const c of iceCandidateQueue.current) {
+                  await peerConnection.current.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+                }
+                iceCandidateQueue.current = [];
               }
               break;
 
             case "ice-candidate":
-              if (peerConnection.current) {
-                await peerConnection.current.addIceCandidate(new RTCIceCandidate(signal.data));
+              if (peerConnection.current && peerConnection.current.remoteDescription) {
+                await peerConnection.current.addIceCandidate(new RTCIceCandidate(signal.data)).catch(() => {});
+              } else {
+                iceCandidateQueue.current.push(signal.data);
               }
               break;
 
