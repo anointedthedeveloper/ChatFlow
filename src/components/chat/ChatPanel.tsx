@@ -36,6 +36,7 @@ interface ChatPanelProps {
   isOtherTyping?: boolean;
   onToggleSidebar?: () => void;
   onToggleProfile?: () => void;
+  onCloseChat?: () => void;
   profileOpen?: boolean;
   isSecondPanel?: boolean;
   onToggleSecondProfile?: () => void;
@@ -47,7 +48,7 @@ interface ReplyState {
   senderName: string;
 }
 
-const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, profileOpen, isSecondPanel, onToggleSecondProfile }: ChatPanelProps) => {
+const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, onCloseChat, profileOpen, isSecondPanel, onToggleSecondProfile }: ChatPanelProps) => {
   const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -249,6 +250,12 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
                 onClick={onToggleProfile} className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors ${profileOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
                 <Info className="h-4 w-4" />
               </motion.button>
+              {onCloseChat && (
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                  onClick={onCloseChat} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Close chat">
+                  <X className="h-4 w-4" />
+                </motion.button>
+              )}
             </>
           )}
         </div>

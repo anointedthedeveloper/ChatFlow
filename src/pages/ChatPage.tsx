@@ -149,6 +149,7 @@ const ChatPage = () => {
               isOtherTyping={isOtherTyping}
               onToggleSidebar={() => setSidebarOpen(true)}
               onToggleProfile={() => setProfileOpen((p) => !p)}
+              onCloseChat={() => { setActiveChatId(null); setProfileOpen(false); }}
               profileOpen={profileOpen}
             />
           ) : (

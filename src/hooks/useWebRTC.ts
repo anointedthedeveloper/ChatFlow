@@ -32,9 +32,7 @@ function createRingtone() {
     pulse:   [[1000,0,0.08],  [1000,0.15,0.08], [1000,0.3,0.08], [1000,0.45,0.08]],
   };
 
-  const ring = () => {
-    const ctx = getAudioContext();
-    if (!ctx || ctx.state !== "running") return; // only play after user gesture
+  const playTone = (ctx: AudioContext) => {
     try {
       const key = localStorage.getItem("chatflow_ringtone") || "default";
       const freqs = RINGTONE_FREQS[key] || RINGTONE_FREQS.default;
@@ -50,7 +48,14 @@ function createRingtone() {
         osc.start(t + start);
         osc.stop(t + start + dur);
       });
-    } catch {}
+    } catch (e) { console.error("[Ringtone] playTone error:", e); }
+  };
+
+  const ring = () => {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === "running") { playTone(ctx); }
+    else { ctx.resume().then(() => playTone(ctx)).catch((e) => console.error("[Ringtone] resume error:", e)); }
   };
 
   return {
@@ -145,16 +150,19 @@ export function useWebRTC() {
   const createPeerConnection = useCallback((targetUserId: string, forGroup = false) => {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pc.onicecandidate = (e) => {
-      if (e.candidate) sendSignal({ type: "ice-candidate", to: targetUserId, data: e.candidate });
+      if (e.candidate) {
+        console.log("[WebRTC] sending ICE candidate to", targetUserId);
+        sendSignal({ type: "ice-candidate", to: targetUserId, data: e.candidate });
+      }
     };
     pc.ontrack = (e) => {
-      // Use the first stream, and update state whenever tracks change
+      console.log("[WebRTC] ontrack fired, streams:", e.streams.length);
       const stream = e.streams[0];
       setRemoteStream(stream);
-      // Also listen for future track replacements (screen share)
       stream.onaddtrack = () => setRemoteStream(new MediaStream(stream.getTracks()));
     };
     pc.onconnectionstatechange = () => {
+      console.log("[WebRTC] connectionState:", pc.connectionState);
       if (pc.connectionState === "connected") {
         ringtoneRef.current.stop();
         setCallState("connected");
@@ -215,9 +223,10 @@ export function useWebRTC() {
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      console.log("[WebRTC] offer sent to", targetUserId);
       await sendSignal({ type: "offer", to: targetUserId, data: offer, callType: type, chatRoomId: roomId || undefined });
     } catch (err) {
-      console.error("startCall failed:", err);
+      console.error("[WebRTC] startCall failed:", err);
       cleanup("no-answer");
     }
   }, [user, createPeerConnection, sendSignal, cleanup, getOrCreateCallRoom]);
@@ -247,7 +256,7 @@ export function useWebRTC() {
       setRemoteUserId(memberIds[0]);
       remoteUserIdRef.current = memberIds[0];
     } catch (err) {
-      console.error("startGroupCall failed:", err);
+      console.error("[WebRTC] startGroupCall failed:", err);
       cleanup("no-answer");
     }
   }, [user, createPeerConnection, sendSignal, cleanup]);
@@ -272,14 +281,15 @@ export function useWebRTC() {
       await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
       // Flush any queued ICE candidates
       for (const c of iceCandidateQueue.current) {
-        await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+        await pc.addIceCandidate(new RTCIceCandidate(c)).catch((e) => console.error("[WebRTC] queued ICE (accept) error:", e));
       }
       iceCandidateQueue.current = [];
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
+      console.log("[WebRTC] answer sent to", signal.from);
       await sendSignal({ type: "answer", to: signal.from, data: answer });
     } catch (err) {
-      console.error("acceptCall failed:", err);
+      console.error("[WebRTC] acceptCall failed:", err);
       cleanup("ended");
     }
   }, [user, createPeerConnection, sendSignal, cleanup]);
@@ -347,6 +357,7 @@ export function useWebRTC() {
 
           switch (signal.type) {
             case "offer":
+              console.log("[WebRTC] incoming offer from", signal.from, "type:", signal.callType);
               setRemoteUserId(signal.from);
               remoteUserIdRef.current = signal.from;
               setRemoteUsername(signal.fromUsername || "Unknown");
@@ -370,11 +381,14 @@ export function useWebRTC() {
             case "answer": {
               const pc = peerConnections.current.get(signal.from) || peerConnection.current;
               if (pc) {
-                await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+                console.log("[WebRTC] setRemoteDescription (answer), state:", pc.signalingState);
+                await pc.setRemoteDescription(new RTCSessionDescription(signal.data)).catch((e) => console.error("[WebRTC] setRemoteDescription error:", e));
                 for (const c of iceCandidateQueue.current) {
-                  await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+                  await pc.addIceCandidate(new RTCIceCandidate(c)).catch((e) => console.error("[WebRTC] queued ICE error:", e));
                 }
                 iceCandidateQueue.current = [];
+              } else {
+                console.warn("[WebRTC] answer received but no peer connection found");
               }
               break;
             }
@@ -382,8 +396,9 @@ export function useWebRTC() {
             case "ice-candidate": {
               const pc = peerConnections.current.get(signal.from) || peerConnection.current;
               if (pc?.remoteDescription) {
-                await pc.addIceCandidate(new RTCIceCandidate(signal.data)).catch(() => {});
+                await pc.addIceCandidate(new RTCIceCandidate(signal.data)).catch((e) => console.error("[WebRTC] addIceCandidate error:", e));
               } else {
+                console.log("[WebRTC] queuing ICE candidate (no remoteDescription yet)");
                 iceCandidateQueue.current.push(signal.data);
               }
               break;

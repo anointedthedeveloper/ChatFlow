@@ -25,8 +25,10 @@ export function unlockAudio() {
 
 function play(fn: (c: AudioContext, t: number) => void) {
   const c = getAudioContext();
-  if (!c || c.state !== "running") return; // silently skip if not unlocked
-  try { fn(c, c.currentTime); } catch {}
+  if (!c) return;
+  const run = () => { try { fn(c, c.currentTime); } catch (e) { console.error("[Sounds] play error:", e); } };
+  if (c.state === "running") { run(); }
+  else { c.resume().then(run).catch((e) => console.error("[Sounds] resume error:", e)); }
 }
 
 export const Sounds = {
