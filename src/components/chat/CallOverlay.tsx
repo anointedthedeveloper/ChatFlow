@@ -26,10 +26,8 @@ interface CallOverlayProps {
 const fmt = (s: number) =>
   `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
-// Attach a stream to a video element immediately — works as both a ref callback and imperative call
 function attachStream(el: HTMLVideoElement | null, stream: MediaStream | null) {
-  if (!el) return;
-  if (el.srcObject === stream) return;
+  if (!el || el.srcObject === stream) return;
   el.srcObject = stream;
   if (stream) el.play().catch(() => {});
 }
@@ -40,6 +38,8 @@ const CallOverlay = ({
   onAccept, onEnd, onReject, onToggleMute, onToggleVideo, onStartScreenShare, onStopScreenShare,
 }: CallOverlayProps) => {
   const mainVideoRef     = useRef<HTMLVideoElement>(null);
+  // selfPipVideoRef is ALWAYS in the DOM — never conditionally mounted
+  const selfPipVideoRef  = useRef<HTMLVideoElement>(null);
   const previewRef       = useRef<HTMLVideoElement>(null);
   const remoteAudioRef   = useRef<HTMLAudioElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
@@ -70,9 +70,15 @@ const CallOverlay = ({
   // Remote audio
   useEffect(() => { attachStream(remoteAudioRef.current, remoteStream); }, [remoteStream]);
 
-  // Main video (remote default, local when swapped) — only when connected
+  // Main video (remote default, local when swapped)
   useEffect(() => {
     attachStream(mainVideoRef.current, swapped ? localStream : remoteStream);
+  }, [swapped, localStream, remoteStream]);
+
+  // Self PiP video — always wired via useEffect since element is always in DOM
+  // Shows localStream (or remoteStream when swapped)
+  useEffect(() => {
+    attachStream(selfPipVideoRef.current, swapped ? remoteStream : localStream);
   }, [swapped, localStream, remoteStream]);
 
   // Track remote video active state
@@ -92,7 +98,7 @@ const CallOverlay = ({
     };
   }, [remoteStream]);
 
-  // Camera preview before accepting
+  // Camera preview before accepting (receiver only)
   useEffect(() => {
     if (callState === "receiving" && callType === "video") {
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
@@ -112,12 +118,6 @@ const CallOverlay = ({
     };
   }, [callState, callType]);
 
-  // Ref callback for self-preview PiP — wires stream immediately on mount
-  // This avoids the useEffect timing race where the element mounts after the effect fires
-  const selfPipRef = useCallback((el: HTMLVideoElement | null) => {
-    attachStream(el, swapped ? remoteStream : localStream);
-  }, [swapped, localStream, remoteStream]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleSwap = useCallback(() => setSwapped((s) => !s), []);
 
   if (callState === "idle") return null;
@@ -125,7 +125,8 @@ const CallOverlay = ({
   const isVideo       = callType === "video";
   const isConnected   = callState === "connected";
   const showMainVideo = isVideo && isConnected;
-  // Show self PiP as soon as localStream exists during a video call (caller sees themselves while ringing)
+  // PiP is visible whenever we have a local stream during a video call
+  // This covers: caller (calling state), callee (connected state after accept)
   const showSelfPip   = isVideo && !!localStream;
 
   const wa = (fn: () => void) => () => { unlockAudio(); fn(); };
@@ -168,32 +169,40 @@ const CallOverlay = ({
         </div>
       )}
 
-      {/* Self PiP — ref callback wires stream on mount, no useEffect race */}
-      {showSelfPip && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="absolute z-20 rounded-2xl overflow-hidden border-2 border-primary shadow-2xl"
-          style={{ bottom: 130, right: 16, width: 108, height: 78 }}
-          whileTap={isConnected ? { scale: 0.95 } : undefined}
-          onClick={isConnected ? handleSwap : undefined}
-          title={isConnected ? "Tap to swap" : "Your camera"}
-        >
-          <video ref={selfPipRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
-          {pipCameraOff && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/85">
-              <AvatarCircle url={pipAvatarUrl} name={pipAvatarName} size="sm" />
-            </div>
-          )}
+      {/*
+        Self PiP — ALWAYS in the DOM so useEffect can reliably wire srcObject.
+        Visibility is controlled by opacity/pointer-events, not conditional rendering.
+        This fixes the callee not seeing themselves: the element exists before localStream
+        arrives, so when localStream is set the useEffect above fires and wires it instantly.
+      */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: showSelfPip ? 1 : 0, scale: showSelfPip ? 1 : 0.85 }}
+        transition={{ duration: 0.2 }}
+        className="absolute z-20 rounded-2xl overflow-hidden border-2 border-primary shadow-2xl"
+        style={{
+          bottom: 130, right: 16, width: 108, height: 78,
+          pointerEvents: showSelfPip ? "auto" : "none",
+        }}
+        onClick={isConnected && showSelfPip ? handleSwap : undefined}
+        title={isConnected ? "Tap to swap" : "Your camera"}
+      >
+        <video ref={selfPipVideoRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
+        {showSelfPip && pipCameraOff && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/85">
+            <AvatarCircle url={pipAvatarUrl} name={pipAvatarName} size="sm" />
+          </div>
+        )}
+        {showSelfPip && (
           <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
             <span className="text-[9px] text-white/70 bg-black/50 px-1.5 py-0.5 rounded-full">
               {pipLabel}{isConnected ? " · tap" : ""}
             </span>
           </div>
-        </motion.div>
-      )}
+        )}
+      </motion.div>
 
-      {/* Camera preview before accepting */}
+      {/* Camera preview before accepting (receiver only) */}
       <div
         className={`absolute z-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl bg-black transition-all duration-300 ${
           callState === "receiving" && isVideo ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
