@@ -14,6 +14,8 @@ interface CallOverlayProps {
   remoteStream: MediaStream | null;
   callDuration: number;
   isScreenSharing?: boolean;
+  isMuted?: boolean;
+  isVideoOff?: boolean;
   onAccept: () => void;
   onEnd: () => void;
   onReject: () => void;
@@ -26,26 +28,24 @@ interface CallOverlayProps {
 const fmt = (s: number) =>
   `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
-function attachStream(el: HTMLVideoElement | null, stream: MediaStream | null) {
+function attachStream(el: HTMLVideoElement | HTMLAudioElement | null, stream: MediaStream | null) {
   if (!el || el.srcObject === stream) return;
   el.srcObject = stream;
-  if (stream) el.play().catch(() => {});
+  if (stream) (el as HTMLVideoElement).play().catch(() => {});
 }
 
 const CallOverlay = ({
   callState, callType, remoteUsername, remoteAvatarUrl, localAvatarUrl, localUsername,
   localStream, remoteStream, callDuration, isScreenSharing,
+  isMuted = false, isVideoOff = false,
   onAccept, onEnd, onReject, onToggleMute, onToggleVideo, onStartScreenShare, onStopScreenShare,
 }: CallOverlayProps) => {
   const mainVideoRef     = useRef<HTMLVideoElement>(null);
-  // selfPipVideoRef is ALWAYS in the DOM — never conditionally mounted
-  const selfPipVideoRef  = useRef<HTMLVideoElement>(null);
-  const previewRef       = useRef<HTMLVideoElement>(null);
+  const selfPipVideoRef  = useRef<HTMLVideoElement>(null);  // always in DOM
+  const previewRef       = useRef<HTMLVideoElement>(null);  // receiver pre-accept preview
   const remoteAudioRef   = useRef<HTMLAudioElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
 
-  const [isMuted,           setIsMuted]           = useState(false);
-  const [isVideoOff,        setIsVideoOff]        = useState(false);
   const [swapped,           setSwapped]           = useState(false);
   const [remoteVideoActive, setRemoteVideoActive] = useState(false);
   const [prevState,         setPrevState]         = useState(callState);
@@ -58,28 +58,43 @@ const CallOverlay = ({
     setPrevState(callState);
   }, [callState, prevState]);
 
-  // Sync mute/video toggle state from actual tracks
-  useEffect(() => {
-    if (!localStream) { setIsMuted(false); setIsVideoOff(false); return; }
-    const a = localStream.getAudioTracks()[0];
-    const v = localStream.getVideoTracks()[0];
-    if (a) setIsMuted(!a.enabled);
-    if (v) setIsVideoOff(!v.enabled);
-  }, [localStream]);
-
   // Remote audio
   useEffect(() => { attachStream(remoteAudioRef.current, remoteStream); }, [remoteStream]);
 
-  // Main video (remote default, local when swapped)
+  // Main video (remote default, local when swapped) — only meaningful when connected
   useEffect(() => {
     attachStream(mainVideoRef.current, swapped ? localStream : remoteStream);
   }, [swapped, localStream, remoteStream]);
 
-  // Self PiP video — always wired via useEffect since element is always in DOM
-  // Shows localStream (or remoteStream when swapped)
+  // Self PiP — always in DOM, wired via useEffect
+  // During "calling"/"connected": shows localStream (or remoteStream when swapped)
+  // During "receiving": shows previewStream (wired separately below)
   useEffect(() => {
+    if (callState === "receiving") return; // previewRef handles this state
     attachStream(selfPipVideoRef.current, swapped ? remoteStream : localStream);
-  }, [swapped, localStream, remoteStream]);
+  }, [callState, swapped, localStream, remoteStream]);
+
+  // Camera preview for receiver — also feeds into selfPipVideoRef so they see themselves
+  useEffect(() => {
+    if (callState === "receiving" && callType === "video") {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then((s) => {
+          previewStreamRef.current = s;
+          attachStream(previewRef.current, s);
+          // Also show in the self PiP so receiver sees themselves immediately
+          attachStream(selfPipVideoRef.current, s);
+        })
+        .catch(() => {});
+    } else {
+      previewStreamRef.current?.getTracks().forEach((t) => t.stop());
+      previewStreamRef.current = null;
+      attachStream(previewRef.current, null);
+    }
+    return () => {
+      previewStreamRef.current?.getTracks().forEach((t) => t.stop());
+      previewStreamRef.current = null;
+    };
+  }, [callState, callType]);
 
   // Track remote video active state
   useEffect(() => {
@@ -98,36 +113,17 @@ const CallOverlay = ({
     };
   }, [remoteStream]);
 
-  // Camera preview before accepting (receiver only)
-  useEffect(() => {
-    if (callState === "receiving" && callType === "video") {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then((s) => {
-          previewStreamRef.current = s;
-          attachStream(previewRef.current, s);
-        })
-        .catch(() => {});
-    } else {
-      previewStreamRef.current?.getTracks().forEach((t) => t.stop());
-      previewStreamRef.current = null;
-      attachStream(previewRef.current, null);
-    }
-    return () => {
-      previewStreamRef.current?.getTracks().forEach((t) => t.stop());
-      previewStreamRef.current = null;
-    };
-  }, [callState, callType]);
-
   const handleSwap = useCallback(() => setSwapped((s) => !s), []);
 
   if (callState === "idle") return null;
 
   const isVideo       = callType === "video";
   const isConnected   = callState === "connected";
+  const isReceiving   = callState === "receiving";
   const showMainVideo = isVideo && isConnected;
-  // PiP is visible whenever we have a local stream during a video call
-  // This covers: caller (calling state), callee (connected state after accept)
-  const showSelfPip   = isVideo && !!localStream;
+
+  // Show self PiP: caller has localStream, receiver has previewStream
+  const showSelfPip = isVideo && (!!localStream || (isReceiving && !!previewStreamRef.current));
 
   const wa = (fn: () => void) => () => { unlockAudio(); fn(); };
 
@@ -138,6 +134,7 @@ const CallOverlay = ({
       : <div className={`${sz} rounded-full gradient-primary flex items-center justify-center font-bold text-white shadow-2xl`}>{name[0]?.toUpperCase() || "?"}</div>;
   };
 
+  // PiP shows "You" normally, remote when swapped
   const pipLabel      = swapped ? remoteUsername : "You";
   const pipAvatarUrl  = swapped ? remoteAvatarUrl : localAvatarUrl;
   const pipAvatarName = swapped ? remoteUsername : (localUsername || "You");
@@ -155,7 +152,7 @@ const CallOverlay = ({
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showMainVideo ? "opacity-100" : "opacity-0 pointer-events-none"}`}
       />
 
-      {/* Avatar overlay when remote camera off */}
+      {/* Full-screen avatar when remote camera is off */}
       {showMainVideo && !swapped && !remoteVideoActive && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3 z-10">
           <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} />
@@ -169,25 +166,18 @@ const CallOverlay = ({
         </div>
       )}
 
-      {/*
-        Self PiP — ALWAYS in the DOM so useEffect can reliably wire srcObject.
-        Visibility is controlled by opacity/pointer-events, not conditional rendering.
-        This fixes the callee not seeing themselves: the element exists before localStream
-        arrives, so when localStream is set the useEffect above fires and wires it instantly.
-      */}
+      {/* Self PiP — always in DOM, opacity-controlled */}
       <motion.div
         initial={false}
         animate={{ opacity: showSelfPip ? 1 : 0, scale: showSelfPip ? 1 : 0.85 }}
         transition={{ duration: 0.2 }}
         className="absolute z-20 rounded-2xl overflow-hidden border-2 border-primary shadow-2xl"
-        style={{
-          bottom: 130, right: 16, width: 108, height: 78,
-          pointerEvents: showSelfPip ? "auto" : "none",
-        }}
+        style={{ bottom: 130, right: 16, width: 108, height: 78, pointerEvents: showSelfPip && isConnected ? "auto" : "none" }}
         onClick={isConnected && showSelfPip ? handleSwap : undefined}
         title={isConnected ? "Tap to swap" : "Your camera"}
       >
         <video ref={selfPipVideoRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
+        {/* Show avatar when camera is off */}
         {showSelfPip && pipCameraOff && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/85">
             <AvatarCircle url={pipAvatarUrl} name={pipAvatarName} size="sm" />
@@ -202,17 +192,14 @@ const CallOverlay = ({
         )}
       </motion.div>
 
-      {/* Camera preview before accepting (receiver only) */}
+      {/* Receiver pre-accept preview (separate smaller box above PiP) */}
       <div
         className={`absolute z-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl bg-black transition-all duration-300 ${
-          callState === "receiving" && isVideo ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          isReceiving && isVideo ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
-        style={{ bottom: 176, right: 16, width: 112, height: 80 }}
+        style={{ bottom: 220, right: 16, width: 80, height: 56 }}
       >
         <video ref={previewRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-        <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
-          <span className="text-[9px] text-white/70 bg-black/50 px-1.5 py-0.5 rounded-full">You</span>
-        </div>
       </div>
 
       {/* Remote audio */}
@@ -236,7 +223,7 @@ const CallOverlay = ({
               <h2 className="text-2xl font-bold text-white">{remoteUsername}</h2>
               <p className="text-sm text-white/60 mt-1">
                 {callState === "calling" && "Calling..."}
-                {callState === "receiving" && `Incoming ${callType} call`}
+                {isReceiving && `Incoming ${callType} call`}
               </p>
             </div>
           </>
@@ -258,13 +245,13 @@ const CallOverlay = ({
       <div className="relative z-20 pb-10 flex flex-col items-center gap-4">
         {isConnected && (
           <div className="flex items-center gap-3">
-            <button onClick={wa(() => { onToggleMute(); setIsMuted((m) => !m); })}
+            <button onClick={wa(onToggleMute)}
               className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-white/30 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}>
               {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </button>
             {isVideo && (
               <>
-                <button onClick={wa(() => { onToggleVideo(); setIsVideoOff((v) => !v); })}
+                <button onClick={wa(onToggleVideo)}
                   className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isVideoOff ? "bg-white/30 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}>
                   {isVideoOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
                 </button>
@@ -280,7 +267,7 @@ const CallOverlay = ({
           </div>
         )}
         <div className="flex items-center gap-8">
-          {callState === "receiving" && (
+          {isReceiving && (
             <>
               <div className="flex flex-col items-center gap-2">
                 <button onClick={wa(() => { Sounds.callDecline(); onReject(); })}

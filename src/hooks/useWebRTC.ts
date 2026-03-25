@@ -368,12 +368,21 @@ export function useWebRTC() {
     cleanup("ended");
   }, [sendSignal, cleanup]);
 
+  const [isMuted,    setIsMuted]    = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+
   const toggleMute = useCallback(() => {
-    localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = !t.enabled; });
+    localStreamRef.current?.getAudioTracks().forEach((t) => {
+      t.enabled = !t.enabled;
+      setIsMuted(!t.enabled);
+    });
   }, []);
 
   const toggleVideo = useCallback(() => {
-    localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = !t.enabled; });
+    localStreamRef.current?.getVideoTracks().forEach((t) => {
+      t.enabled = !t.enabled;
+      setIsVideoOff(!t.enabled);
+    });
   }, []);
 
   const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack | null) => {
@@ -508,6 +517,7 @@ export function useWebRTC() {
   return {
     callState, callType, remoteUserId, remoteUsername,
     localStream, remoteStream, callDuration, isScreenSharing,
+    isMuted, isVideoOff,
     startCall, startGroupCall, acceptCall, rejectCall, endCall,
     toggleMute, toggleVideo, replaceVideoTrack, startScreenShare, stopScreenShare,
   };
