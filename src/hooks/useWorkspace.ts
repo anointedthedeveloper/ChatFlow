@@ -58,6 +58,21 @@ export interface WorkspaceProject {
   created_at: string;
 }
 
+export interface WorkspaceProjectFile {
+  id: string;
+  workspace_id: string;
+  project_id: string;
+  repo_full_name: string;
+  repo_owner: string;
+  repo_name: string;
+  branch_name: string;
+  file_path: string;
+  file_name: string;
+  file_sha: string | null;
+  imported_by: string;
+  created_at: string;
+}
+
 export function useWorkspace() {
   const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -66,6 +81,7 @@ export function useWorkspace() {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<WorkspaceProject[]>([]);
+  const [projectFiles, setProjectFiles] = useState<WorkspaceProjectFile[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchWorkspaces = useCallback(async () => {
@@ -134,10 +150,25 @@ export function useWorkspace() {
     setProjects((data as WorkspaceProject[]) || []);
   }, []);
 
+  const fetchProjectFiles = useCallback(async (workspaceId: string) => {
+    const { data } = await supabase
+      .from("workspace_project_files")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false });
+    setProjectFiles((data as WorkspaceProjectFile[]) || []);
+  }, []);
+
   const selectWorkspace = useCallback(async (ws: Workspace) => {
     setActiveWorkspace(ws);
-    await Promise.all([fetchChannels(ws.id), fetchMembers(ws.id), fetchTasks(ws.id), fetchProjects(ws.id)]);
-  }, [fetchChannels, fetchMembers, fetchTasks, fetchProjects]);
+    await Promise.all([
+      fetchChannels(ws.id),
+      fetchMembers(ws.id),
+      fetchTasks(ws.id),
+      fetchProjects(ws.id),
+      fetchProjectFiles(ws.id),
+    ]);
+  }, [fetchChannels, fetchMembers, fetchTasks, fetchProjects, fetchProjectFiles]);
 
   const createWorkspace = useCallback(async (name: string, description?: string) => {
     if (!user) return null;
@@ -240,6 +271,56 @@ export function useWorkspace() {
     await fetchProjects(workspaceId);
   }, [fetchProjects]);
 
+  const updateProjectRepo = useCallback(async (
+    projectId: string,
+    linkedRepoFullName: string | null,
+    workspaceId: string,
+  ) => {
+    await supabase
+      .from("workspace_projects")
+      .update({ linked_repo_full_name: linkedRepoFullName } as never)
+      .eq("id", projectId);
+    await fetchProjects(workspaceId);
+  }, [fetchProjects]);
+
+  const importProjectFile = useCallback(async (
+    workspaceId: string,
+    projectId: string,
+    repoFullName: string,
+    branchName: string,
+    filePath: string,
+    fileSha?: string | null,
+  ) => {
+    if (!user) return { ok: false, error: "You must be signed in" };
+    const [repo_owner, repo_name] = repoFullName.split("/");
+    const fileName = filePath.split("/").pop() || filePath;
+    const { data, error } = await supabase
+      .from("workspace_project_files")
+      .upsert({
+        workspace_id: workspaceId,
+        project_id: projectId,
+        repo_full_name: repoFullName,
+        repo_owner,
+        repo_name,
+        branch_name: branchName,
+        file_path: filePath,
+        file_name: fileName,
+        file_sha: fileSha || null,
+        imported_by: user.id,
+      } as never, { onConflict: "project_id,repo_full_name,branch_name,file_path" })
+      .select()
+      .single();
+
+    if (error) return { ok: false, error: error.message };
+
+    setProjectFiles((prev) => {
+      const next = prev.filter((file) => file.id !== (data as WorkspaceProjectFile).id);
+      return [data as WorkspaceProjectFile, ...next];
+    });
+
+    return { ok: true, data: data as WorkspaceProjectFile };
+  }, [user]);
+
   const addMember = useCallback(async (workspaceId: string, username: string) => {
     const { data: profile } = await supabase
       .from("profiles")
@@ -258,8 +339,10 @@ export function useWorkspace() {
   useEffect(() => { fetchWorkspaces(); }, [fetchWorkspaces]);
 
   return {
-    workspaces, activeWorkspace, channels, members, tasks, projects, loading,
+    workspaces, activeWorkspace, channels, members, tasks, projects, projectFiles, loading,
     fetchWorkspaces, selectWorkspace, createWorkspace, joinWorkspace,
-    createChannel, setDevStatus, createTask, updateTaskStatus, createProject, updateProjectStatus, addMember, fetchTasks, fetchProjects,
+    createChannel, setDevStatus, createTask, updateTaskStatus,
+    createProject, updateProjectStatus, updateProjectRepo,
+    addMember, fetchTasks, fetchProjects, fetchProjectFiles, importProjectFile,
   };
 }
