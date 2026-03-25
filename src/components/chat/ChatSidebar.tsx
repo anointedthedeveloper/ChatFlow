@@ -100,9 +100,10 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
       (u.display_name?.toLowerCase().includes(userSearch.toLowerCase()) ?? false)
   );
 
-  const acceptedChats = chats.filter((c) => !c.isPending);
+  const acceptedChats = chats.filter((c) => !c.isPending && !c.isArchived);
   const requestChats = chats.filter((c) => c.isPending);
-  const displayChats = (activeTab === "requests" ? requestChats : acceptedChats).filter(
+  const archivedChats = chats.filter((c) => c.isArchived);
+  const displayChats = (activeTab === "requests" ? requestChats : activeTab === "archived" ? archivedChats : acceptedChats).filter(
     (c) => !search.trim() || c.displayName.toLowerCase().includes(search.toLowerCase())
   );
 
