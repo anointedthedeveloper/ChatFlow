@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Smile, Paperclip, Phone, Video, MoreVertical, Image as ImageIcon } from "lucide-react";
+import { Send, Smile, Paperclip, Phone, Video, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,11 +99,12 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="px-5 py-3 flex items-center justify-between border-b border-border glass-panel">
+      <div className="px-4 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <AvatarBubble
             letter={chat.displayAvatar}
             status={chat.is_group ? undefined : (chat.otherMemberStatus as "online" | "offline" | undefined)}
+            imageUrl={chat.is_group ? null : (chat.members.find(m => m.user_id !== user?.id)?.profiles?.avatar_url ?? null)}
           />
           <div>
             <h2 className="text-sm font-semibold text-foreground">{chat.displayName}</h2>

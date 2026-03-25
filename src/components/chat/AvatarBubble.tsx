@@ -4,6 +4,7 @@ interface AvatarBubbleProps {
   letter: string;
   status?: "online" | "offline";
   size?: "sm" | "md" | "lg";
+  imageUrl?: string | null;
 }
 
 const sizes = {
@@ -12,12 +13,20 @@ const sizes = {
   lg: "h-14 w-14 text-lg",
 };
 
-const AvatarBubble = ({ letter, status, size = "md" }: AvatarBubbleProps) => {
+const AvatarBubble = ({ letter, status, size = "md", imageUrl }: AvatarBubbleProps) => {
   return (
     <div className="relative shrink-0">
-      <div className={`${sizes[size]} gradient-primary rounded-full flex items-center justify-center font-semibold text-primary-foreground`}>
-        {letter}
-      </div>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={letter}
+          className={`${sizes[size]} rounded-full object-cover border-2 border-border`}
+        />
+      ) : (
+        <div className={`${sizes[size]} gradient-primary rounded-full flex items-center justify-center font-semibold text-primary-foreground select-none`}>
+          {letter}
+        </div>
+      )}
       {status && (
         <motion.div
           initial={{ scale: 0 }}

@@ -13,7 +13,7 @@ const EmptyChatPanel = () => {
           <MessageSquare className="h-10 w-10 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-foreground">PulseChat</h2>
+          <h2 className="text-xl font-semibold text-foreground">ChatFlow</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Select a conversation to start messaging
           </p>
