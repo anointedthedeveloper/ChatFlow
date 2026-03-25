@@ -46,8 +46,7 @@ const CallOverlay = ({
   onStartScreenShare, onStopScreenShare,
 }: CallOverlayProps) => {
   const mainVideoRef     = useRef<HTMLVideoElement>(null);
-  const selfPipVideoRef  = useRef<HTMLVideoElement>(null);  // always in DOM
-  const previewRef       = useRef<HTMLVideoElement>(null);  // receiver pre-accept preview
+  const selfPipVideoRef  = useRef<HTMLVideoElement>(null);
   const remoteAudioRef   = useRef<HTMLAudioElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
 
@@ -66,40 +65,34 @@ const CallOverlay = ({
   // Remote audio
   useEffect(() => { attachStream(remoteAudioRef.current, remoteStream); }, [remoteStream]);
 
-  // Main video (remote default, local when swapped) — only meaningful when connected
+  // Main video — remote by default, local when swapped
+  // Re-run whenever callType changes (audio→video upgrade)
   useEffect(() => {
+    if (callState !== "connected") return;
     attachStream(mainVideoRef.current, swapped ? localStream : remoteStream);
-  }, [swapped, localStream, remoteStream]);
+  }, [swapped, localStream, remoteStream, callState, callType]);
 
-  // Self PiP — always in DOM, wired via useEffect
-  // During "calling"/"connected": shows localStream (or remoteStream when swapped)
-  // During "receiving": shows previewStream (wired separately below)
+  // Self PiP
   useEffect(() => {
-    if (callState === "receiving") return; // previewRef handles this state
-    attachStream(selfPipVideoRef.current, swapped ? remoteStream : localStream);
-  }, [callState, swapped, localStream, remoteStream]);
-
-  // Camera preview for receiver — also feeds into selfPipVideoRef so they see themselves
-  useEffect(() => {
-    if (callState === "receiving" && callType === "video") {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then((s) => {
-          previewStreamRef.current = s;
-          attachStream(previewRef.current, s);
-          // Also show in the self PiP so receiver sees themselves immediately
-          attachStream(selfPipVideoRef.current, s);
-        })
-        .catch(() => {});
-    } else {
-      previewStreamRef.current?.getTracks().forEach((t) => t.stop());
-      previewStreamRef.current = null;
-      attachStream(previewRef.current, null);
+    if (callState === "receiving") {
+      // Show local camera preview while receiving
+      if (callType === "video") {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then((s) => {
+            previewStreamRef.current = s;
+            attachStream(selfPipVideoRef.current, s);
+          })
+          .catch(() => {});
+      }
+      return;
     }
-    return () => {
-      previewStreamRef.current?.getTracks().forEach((t) => t.stop());
+    // Stop any preview stream once call is accepted/ended
+    if (previewStreamRef.current) {
+      previewStreamRef.current.getTracks().forEach((t) => t.stop());
       previewStreamRef.current = null;
-    };
-  }, [callState, callType]);
+    }
+    attachStream(selfPipVideoRef.current, swapped ? remoteStream : localStream);
+  }, [callState, callType, swapped, localStream, remoteStream]);
 
   // Track remote video active state via remoteVideoOff prop (signalled explicitly)
   const remoteVideoActive = !remoteVideoOff;
@@ -113,7 +106,6 @@ const CallOverlay = ({
   const isReceiving   = callState === "receiving";
   const showMainVideo = isVideo && isConnected;
 
-  // Show self PiP: caller has localStream, receiver has previewStream
   const showSelfPip = isVideo && (!!localStream || (isReceiving && !!previewStreamRef.current));
 
   const wa = (fn: () => void) => () => { unlockAudio(); fn(); };
@@ -182,16 +174,6 @@ const CallOverlay = ({
           </div>
         )}
       </motion.div>
-
-      {/* Receiver pre-accept preview (separate smaller box above PiP) */}
-      <div
-        className={`absolute z-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl bg-black transition-all duration-300 ${
-          isReceiving && isVideo ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        style={{ bottom: 220, right: 16, width: 80, height: 56 }}
-      >
-        <video ref={previewRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-      </div>
 
       {/* Remote audio */}
       <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: "none" }} />
