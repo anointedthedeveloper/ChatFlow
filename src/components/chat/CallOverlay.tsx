@@ -54,6 +54,7 @@ const CallOverlay = ({
   useEffect(() => {
     if (prevState === callState) return;
     if (callState === "idle" && prevState === "connected") Sounds.callEnd();
+    // Only play decline sound if we were receiving and never connected
     if (callState === "idle" && prevState === "receiving") Sounds.callDecline();
     setPrevState(callState);
   }, [callState, prevState]);

@@ -273,7 +273,7 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
             {isCall && (
               <>
                 {message.fileType === "call/video" ? <Video className="h-4 w-4 shrink-0" /> : <Phone className="h-4 w-4 shrink-0" />}
-                <span className="text-sm font-medium">{message.text.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}]\s*/u, "")}</span>
+                <span className="text-sm font-medium">{message.text}</span>
               </>
             )}
 

@@ -208,14 +208,14 @@ export function useWebRTC() {
       if (e.streams && e.streams[0]) {
         setRemoteStream(e.streams[0]);
       } else {
-        // Fallback: build stream from track
-        const existing = remoteStream;
-        if (existing) {
-          existing.addTrack(e.track);
-          setRemoteStream(new MediaStream(existing.getTracks()));
-        } else {
-          setRemoteStream(new MediaStream([e.track]));
-        }
+        // Fallback: build stream from track using a ref-safe approach
+        setRemoteStream((existing) => {
+          if (existing) {
+            existing.addTrack(e.track);
+            return new MediaStream(existing.getTracks());
+          }
+          return new MediaStream([e.track]);
+        });
       }
     };
 
@@ -366,7 +366,8 @@ export function useWebRTC() {
   const endCall = useCallback(() => {
     const rid = remoteUserIdRef.current;
     if (rid) sendSignal({ type: "end-call", to: rid });
-    cleanup("ended");
+    // If we never connected, treat as no-answer (avoids "Call ended · 0s")
+    cleanup(callStateRef.current === "calling" ? "no-answer" : "ended");
   }, [sendSignal, cleanup]);
 
   const [isMuted,       setIsMuted]       = useState(false);

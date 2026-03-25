@@ -539,7 +539,7 @@ export function useChat() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, activeChatId, fetchChatRooms, fetchMessages]);
+  }, [user, activeChatId, fetchChatRooms]);
 
   return {
     chatRooms, activeChat, activeChatId, setActiveChatId,

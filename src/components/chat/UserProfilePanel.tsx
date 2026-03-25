@@ -75,6 +75,7 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
   const [selectedToAdd, setSelectedToAdd] = useState<string[]>([]);
   const [addingMembers, setAddingMembers] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [iconError, setIconError] = useState<string | null>(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
   const iconRef = useRef<HTMLInputElement>(null);
@@ -108,17 +109,21 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
   const handleCroppedIcon = async (blob: Blob) => {
     setCropSrc(null);
     setUploadingIcon(true);
-    const path = `group-icons/${chat.id}.jpg`;
-    const { error } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
-    if (!error) {
-      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-      const url = data.publicUrl;
-      const busted = `${url}?t=${Date.now()}`;
-      setGroupIcon(busted);
-      // Persist immediately so all members get the realtime update
-      await supabase.from("chat_rooms").update({ icon_url: url }).eq("id", chat.id);
-      onRefresh?.();
+    setIconError(null);
+    const path = `group-icons/${chat.id}-${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from("chat-attachments").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+    if (error) {
+      setIconError(`Upload failed: ${error.message}`);
+      setUploadingIcon(false);
+      return;
     }
+    const { data } = supabase.storage.from("chat-attachments").getPublicUrl(path);
+    const url = data.publicUrl;
+    const busted = `${url}?t=${Date.now()}`;
+    setGroupIcon(busted);
+    const { error: updateError } = await supabase.from("chat_rooms").update({ icon_url: url }).eq("id", chat.id);
+    if (updateError) setIconError(`Saved icon but failed to update group: ${updateError.message}`);
+    else onRefresh?.();
     setUploadingIcon(false);
   };
 
@@ -128,7 +133,12 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
     const updates: any = { name: groupName.trim(), description: groupDesc.trim() || null };
     if (groupIcon) updates.icon_url = groupIcon.split("?t=")[0];
     const oldName = chat.displayName;
-    await supabase.from("chat_rooms").update(updates).eq("id", chat.id);
+    const { error } = await supabase.from("chat_rooms").update(updates).eq("id", chat.id);
+    if (error) {
+      setIconError(`Failed to save: ${error.message}`);
+      setSavingGroup(false);
+      return;
+    }
     if (groupName.trim() !== oldName) {
       await onSendSystemMessage?.(chat.id, `Group name changed to "${groupName.trim()}"`);
     }
@@ -254,6 +264,9 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
                   </div>
                 )}
 
+                {iconError && (
+                  <p className="text-xs text-destructive mt-1 text-center px-2">{iconError}</p>
+                )}
                 {editingGroup ? (
                   <div className="mt-3 w-full space-y-2">
                     <input
