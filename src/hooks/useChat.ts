@@ -199,42 +199,43 @@ export function useChat() {
     async (otherUserId: string) => {
       if (!user) return null;
 
-      // Check if DM already exists
+      // Find existing DM by checking shared non-group rooms
       const { data: myRooms } = await supabase
         .from("chat_members")
         .select("chat_room_id")
         .eq("user_id", user.id);
 
-      if (myRooms) {
-        for (const room of myRooms) {
-          const { data: otherMember } = await supabase
-            .from("chat_members")
-            .select("user_id")
-            .eq("chat_room_id", room.chat_room_id)
-            .eq("user_id", otherUserId)
-            .single();
+      const { data: theirRooms } = await supabase
+        .from("chat_members")
+        .select("chat_room_id")
+        .eq("user_id", otherUserId);
 
-          if (otherMember) {
-            const { data: roomData } = await supabase
-              .from("chat_rooms")
-              .select("*")
-              .eq("id", room.chat_room_id)
-              .eq("is_group", false)
-              .single();
-
-            if (roomData) return roomData.id;
+      if (myRooms && theirRooms) {
+        const myIds = new Set(myRooms.map((r) => r.chat_room_id));
+        const shared = theirRooms.find((r) => myIds.has(r.chat_room_id));
+        if (shared) {
+          // Verify it's a non-group room
+          const { data: roomData } = await supabase
+            .from("chat_rooms")
+            .select("id, is_group")
+            .eq("id", shared.chat_room_id)
+            .eq("is_group", false)
+            .maybeSingle();
+          if (roomData) {
+            await fetchChatRooms();
+            return roomData.id;
           }
         }
       }
 
       // Create new DM room
-      const { data: newRoom } = await supabase
+      const { data: newRoom, error } = await supabase
         .from("chat_rooms")
         .insert({ is_group: false, created_by: user.id })
         .select()
         .single();
 
-      if (!newRoom) return null;
+      if (!newRoom || error) return null;
 
       await supabase.from("chat_members").insert([
         { chat_room_id: newRoom.id, user_id: user.id },
