@@ -25,7 +25,7 @@ const ChatPage = () => {
   } = useChat();
 
   const { callState, callType, remoteUserId, remoteUsername, localStream, remoteStream,
-    callDuration, startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo,
+    callDuration, startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo, replaceVideoTrack,
   } = useWebRTC();
 
   // Resolve remote user's avatar from any chat room they're in
@@ -134,8 +134,10 @@ const ChatPage = () => {
 
       {/* Main chat area */}
       <div className="flex-1 flex overflow-hidden min-w-0">
-        {/* Primary chat */}
-        <div className={`flex flex-col overflow-hidden transition-all duration-300 ${secondChat ? "w-1/2 border-r border-border" : "flex-1"}`}>
+        {/* Primary chat — full width on mobile/tablet, half on desktop when split */}
+        <div className={`flex flex-col overflow-hidden transition-all duration-300 ${
+          secondChat ? "hidden lg:flex lg:w-1/2 lg:border-r lg:border-border" : "flex-1"
+        }`}>
           {activeChat ? (
             <ChatPanel
               chat={activeChat}
@@ -154,7 +156,7 @@ const ChatPage = () => {
           )}
         </div>
 
-        {/* Second chat panel (split view) */}
+        {/* Second chat panel — only on desktop lg+ */}
         <AnimatePresence>
           {secondChat && (
             <motion.div
@@ -162,7 +164,7 @@ const ChatPage = () => {
               animate={{ width: "50%", opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="overflow-hidden flex flex-col"
+              className="hidden lg:flex overflow-hidden flex-col"
             >
               <ChatPanel
                 chat={secondChat}
@@ -218,6 +220,7 @@ const ChatPage = () => {
             onReject={rejectCall}
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
+            onReplaceVideoTrack={replaceVideoTrack}
           />
         )}
       </AnimatePresence>

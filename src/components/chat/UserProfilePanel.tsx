@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Phone, Video, MessageSquare, Camera, Loader2, UserPlus, Check, Pencil, ZoomIn } from "lucide-react";
+import { X, Phone, Video, MessageSquare, Camera, Loader2, UserPlus, Check, Pencil, ZoomIn, Shield, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AvatarBubble from "./AvatarBubble";
 import type { EnrichedChatRoom } from "@/hooks/useChat";
@@ -56,6 +56,7 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
   const [selectedToAdd, setSelectedToAdd] = useState<string[]>([]);
   const [addingMembers, setAddingMembers] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState(false);
   const iconRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -112,6 +113,24 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
     onRefresh?.();
   };
 
+  const makeAdmin = async (userId: string) => {
+    await supabase.from("chat_members")
+      .update({ role: "admin" } as any)
+      .eq("chat_room_id", chat.id)
+      .eq("user_id", userId)
+      .then(() => {}).catch(() => {});
+    onRefresh?.();
+  };
+
+  const deleteGroup = async () => {
+    if (!window.confirm("Delete this group? This cannot be undone.")) return;
+    setDeletingGroup(true);
+    await supabase.from("chat_rooms").delete().eq("id", chat.id);
+    setDeletingGroup(false);
+    onClose();
+    onRefresh?.();
+  };
+
   const filteredUsers = allUsers.filter((u) =>
     u.username.toLowerCase().includes(addSearch.toLowerCase()) ||
     (u.display_name?.toLowerCase().includes(addSearch.toLowerCase()) ?? false)
@@ -125,13 +144,11 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/40 z-20"
             onClick={onClose}
           />
-          {/* Panel — always fixed overlay, never takes layout space */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -158,9 +175,11 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
                         {chat.displayAvatar}
                       </div>
                     )}
-                    <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      {uploadingIcon ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : isAdmin ? <Camera className="h-5 w-5 text-white" /> : null}
-                    </div>
+                    {isAdmin && (
+                      <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        {uploadingIcon ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                      </div>
+                    )}
                     <input ref={iconRef} type="file" className="hidden" accept="image/*" onChange={handleIconUpload} disabled={!isAdmin} />
                   </div>
                 ) : (
@@ -290,9 +309,31 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
                           </span>
                           <span className="text-[10px] text-muted-foreground">@{m.profiles?.username}</span>
                         </div>
+                        {/* Make admin — only for admins, on non-admin members that aren't self */}
+                        {isAdmin && m.user_id !== user?.id && m.role !== "admin" && (
+                          <button
+                            onClick={() => makeAdmin(m.user_id)}
+                            title="Make admin"
+                            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
+                          >
+                            <Shield className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
+
+                  {/* Delete group — admin only */}
+                  {isAdmin && (
+                    <button
+                      onClick={deleteGroup}
+                      disabled={deletingGroup}
+                      className="mt-4 w-full flex items-center justify-center gap-2 text-xs text-destructive hover:bg-destructive/10 rounded-xl py-2.5 transition-colors border border-destructive/30"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {deletingGroup ? "Deleting..." : "Delete Group"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

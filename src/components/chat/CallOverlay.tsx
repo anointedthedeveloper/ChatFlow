@@ -18,6 +18,7 @@ interface CallOverlayProps {
   onReject: () => void;
   onToggleMute: () => void;
   onToggleVideo: () => void;
+  onReplaceVideoTrack?: (track: MediaStreamTrack | null) => Promise<void>;
 }
 
 const fmt = (s: number) =>
@@ -26,33 +27,33 @@ const fmt = (s: number) =>
 const CallOverlay = ({
   callState, callType, remoteUsername, remoteAvatarUrl, localAvatarUrl, localUsername,
   localStream, remoteStream, callDuration,
-  onAccept, onEnd, onReject, onToggleMute, onToggleVideo,
+  onAccept, onEnd, onReject, onToggleMute, onToggleVideo, onReplaceVideoTrack,
 }: CallOverlayProps) => {
-  const mainVideoRef   = useRef<HTMLVideoElement>(null);
-  const pipVideoRef    = useRef<HTMLVideoElement>(null);
-  const previewRef     = useRef<HTMLVideoElement>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
-  const previewStreamRef = useRef<MediaStream | null>(null);
-  const screenStreamRef  = useRef<MediaStream | null>(null);
+  // Main = remote (default), PiP = local. Swapped = local is main.
+  const mainVideoRef    = useRef<HTMLVideoElement>(null);
+  const pipVideoRef     = useRef<HTMLVideoElement>(null);
+  const previewRef      = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef  = useRef<HTMLAudioElement>(null);
+  const previewStreamRef  = useRef<MediaStream | null>(null);
+  const screenStreamRef   = useRef<MediaStream | null>(null);
 
-  const [isMuted,       setIsMuted]       = useState(false);
-  const [isVideoOff,    setIsVideoOff]    = useState(false);
-  const [isSharing,     setIsSharing]     = useState(false);
-  const [swapped,       setSwapped]       = useState(false); // true = local is main
+  const [isMuted,           setIsMuted]           = useState(false);
+  const [isVideoOff,        setIsVideoOff]        = useState(false);
+  const [isSharing,         setIsSharing]         = useState(false);
+  const [swapped,           setSwapped]           = useState(false);
   const [remoteVideoActive, setRemoteVideoActive] = useState(false);
-  const [prevState, setPrevState] = useState(callState);
+  const [prevState,         setPrevState]         = useState(callState);
 
-  // Sound effects on state transitions
+  // ── Sound effects ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (prevState !== callState) {
-      if (callState === "connected") Sounds.callAccept();
-      if (callState === "idle" && prevState === "connected") Sounds.callEnd();
-      if (callState === "idle" && prevState === "receiving") Sounds.callDecline();
-      setPrevState(callState);
-    }
+    if (prevState === callState) return;
+    if (callState === "connected") Sounds.callAccept();
+    if (callState === "idle" && prevState === "connected") Sounds.callEnd();
+    if (callState === "idle" && prevState === "receiving") Sounds.callDecline();
+    setPrevState(callState);
   }, [callState, prevState]);
 
-  // Sync mute/video from actual track state
+  // ── Sync mute/video from actual track state ────────────────────────────────
   useEffect(() => {
     if (!localStream) { setIsMuted(false); setIsVideoOff(false); return; }
     const a = localStream.getAudioTracks()[0];
@@ -61,21 +62,30 @@ const CallOverlay = ({
     if (v) setIsVideoOff(!v.enabled);
   }, [localStream]);
 
-  // Camera preview before accepting
+  // ── Camera preview before accepting ───────────────────────────────────────
   useEffect(() => {
     if (callState === "receiving" && callType === "video") {
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then((s) => { previewStreamRef.current = s; if (previewRef.current) previewRef.current.srcObject = s; })
+        .then((s) => {
+          previewStreamRef.current = s;
+          if (previewRef.current) {
+            previewRef.current.srcObject = s;
+            previewRef.current.play().catch(() => {});
+          }
+        })
         .catch(() => {});
     } else {
       previewStreamRef.current?.getTracks().forEach((t) => t.stop());
       previewStreamRef.current = null;
       if (previewRef.current) previewRef.current.srcObject = null;
     }
-    return () => { previewStreamRef.current?.getTracks().forEach((t) => t.stop()); previewStreamRef.current = null; };
+    return () => {
+      previewStreamRef.current?.getTracks().forEach((t) => t.stop());
+      previewStreamRef.current = null;
+    };
   }, [callState, callType]);
 
-  // Track remote video active
+  // ── Track remote video active ──────────────────────────────────────────────
   useEffect(() => {
     if (!remoteStream) { setRemoteVideoActive(false); return; }
     const vt = remoteStream.getVideoTracks()[0];
@@ -88,55 +98,73 @@ const CallOverlay = ({
     return () => { vt.removeEventListener("mute", onMute); vt.removeEventListener("unmute", onUnmute); };
   }, [remoteStream]);
 
-  // Wire video elements based on swap state
+  // ── Wire video elements ────────────────────────────────────────────────────
+  // Main video: remote (default) or local (swapped) or screen share
+  // PiP video: local (default) or remote (swapped)
+  // Local video is ALWAYS muted to prevent echo
   useEffect(() => {
-    const mainStream = swapped ? localStream : remoteStream;
-    const pipStream  = swapped ? remoteStream : localStream;
-    if (mainVideoRef.current) mainVideoRef.current.srcObject = mainStream;
-    if (pipVideoRef.current)  pipVideoRef.current.srcObject  = pipStream;
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream;
-  }, [swapped, localStream, remoteStream]);
+    if (!mainVideoRef.current || !pipVideoRef.current) return;
 
-  // Screen sharing
+    if (isSharing && screenStreamRef.current) {
+      mainVideoRef.current.srcObject = screenStreamRef.current;
+      pipVideoRef.current.srcObject  = localStream;
+    } else if (swapped) {
+      mainVideoRef.current.srcObject = localStream;
+      pipVideoRef.current.srcObject  = remoteStream;
+    } else {
+      mainVideoRef.current.srcObject = remoteStream;
+      pipVideoRef.current.srcObject  = localStream;
+    }
+
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream;
+  }, [swapped, localStream, remoteStream, isSharing]);
+
+  // ── Screen sharing ─────────────────────────────────────────────────────────
   const toggleScreenShare = useCallback(async () => {
     if (isSharing) {
+      // Stop screen share, restore camera
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
       setIsSharing(false);
-      // Restore camera track
-      if (localStream) {
-        const camTrack = localStream.getVideoTracks()[0];
-        if (camTrack && mainVideoRef.current) {
-          const s = new MediaStream([camTrack]);
-          if (!swapped && mainVideoRef.current) mainVideoRef.current.srcObject = remoteStream;
-          if (swapped && mainVideoRef.current) mainVideoRef.current.srcObject = localStream;
-        }
+      // Replace track back to camera on remote end
+      await onReplaceVideoTrack?.(null);
+      // Restore local video element
+      if (mainVideoRef.current) {
+        mainVideoRef.current.srcObject = swapped ? localStream : remoteStream;
       }
     } else {
       try {
-        const screen = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: false });
+        const screen = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
         screenStreamRef.current = screen;
         setIsSharing(true);
-        // Show screen as main regardless of swap
+        // Replace the video track sent to remote peer
+        const screenVideoTrack = screen.getVideoTracks()[0];
+        await onReplaceVideoTrack?.(screenVideoTrack);
+        // Show screen locally as main
         if (mainVideoRef.current) mainVideoRef.current.srcObject = screen;
-        screen.getVideoTracks()[0].onended = () => {
-          setIsSharing(false);
+        // Auto-stop when user clicks browser's "Stop sharing"
+        screenVideoTrack.onended = async () => {
           screenStreamRef.current = null;
-          if (mainVideoRef.current) mainVideoRef.current.srcObject = swapped ? localStream : remoteStream;
+          setIsSharing(false);
+          await onReplaceVideoTrack?.(null);
+          if (mainVideoRef.current) {
+            mainVideoRef.current.srcObject = swapped ? localStream : remoteStream;
+          }
         };
       } catch {}
     }
-  }, [isSharing, localStream, remoteStream, swapped]);
+  }, [isSharing, swapped, localStream, remoteStream, onReplaceVideoTrack]);
 
   if (callState === "idle") return null;
 
   const isVideo     = callType === "video";
   const isConnected = callState === "connected";
   const showVideo   = isVideo && isConnected;
-  const showRemoteVideo = showVideo && remoteStream && remoteVideoActive && !isSharing;
+  // Remote video is active when: not sharing, not swapped, remote stream has live video
+  const showRemoteMain = showVideo && !isSharing && !swapped && remoteStream && remoteVideoActive;
 
   const AvatarCircle = ({ url, name, size = "lg" }: { url?: string | null; name: string; size?: "sm" | "lg" }) => {
-    const sz = size === "lg" ? "h-24 w-24 text-3xl" : "h-10 w-10 text-base";
+    const sz = size === "lg" ? "h-24 w-24 text-3xl" : "h-10 w-10 text-sm";
     return url
       ? <img src={url} alt={name} className={`${sz} rounded-full object-cover border-2 border-white/20 shadow-2xl`} />
       : <div className={`${sz} rounded-full gradient-primary flex items-center justify-center font-bold text-white shadow-2xl`}>{name[0]?.toUpperCase() || "?"}</div>;
@@ -149,66 +177,75 @@ const CallOverlay = ({
       {/* Background */}
       <div className={`absolute inset-0 ${showVideo ? "bg-black" : "bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900"}`} />
 
-      {/* Main video (remote or screen or swapped local) */}
-      <video ref={mainVideoRef} autoPlay playsInline muted={swapped}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showVideo ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      {/* Main video element — always rendered so ref is always attached */}
+      <video
+        ref={mainVideoRef}
+        autoPlay playsInline
+        muted={swapped || isSharing} // mute when showing local or screen (no echo)
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          showVideo ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
       />
 
-      {/* Remote avatar when camera off */}
-      {showVideo && !showRemoteVideo && !isSharing && !swapped && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+      {/* Remote avatar fallback when remote camera is off */}
+      {showVideo && !isSharing && !swapped && !showRemoteMain && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70">
           <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} />
         </div>
       )}
 
-      {/* PiP — tappable to swap */}
+      {/* PiP — always muted (local feed or remote when swapped) */}
       {showVideo && (
         <motion.div
           className="absolute z-20 rounded-2xl overflow-hidden border-2 border-primary shadow-2xl cursor-pointer"
-          style={{ bottom: 120, right: 16, width: 100, height: 72 }}
+          style={{ bottom: 130, right: 16, width: 108, height: 78 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setSwapped((s) => !s)}
-          title="Tap to swap"
+          onClick={() => !isSharing && setSwapped((s) => !s)}
+          title={isSharing ? "Screen sharing active" : "Tap to swap"}
         >
-          <video ref={pipVideoRef} autoPlay playsInline muted={!swapped}
-            className="w-full h-full object-cover"
+          <video
+            ref={pipVideoRef}
+            autoPlay playsInline muted // always muted — PiP is always local when not swapped
+            className="w-full h-full object-cover bg-black"
           />
-          {/* Show avatar if pip is local and video off */}
-          {!swapped && isVideoOff && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+          {/* Avatar overlay when local camera is off and PiP is local */}
+          {!swapped && isVideoOff && !isSharing && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80">
               <AvatarCircle url={localAvatarUrl} name={localUsername || "You"} size="sm" />
             </div>
           )}
-          <div className="absolute bottom-1 left-0 right-0 text-center">
-            <span className="text-[9px] text-white/60 bg-black/40 px-1 rounded-full">
-              {swapped ? remoteUsername : "You"} · tap to swap
+          <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
+            <span className="text-[9px] text-white/70 bg-black/50 px-1.5 py-0.5 rounded-full">
+              {isSharing ? "Your cam" : swapped ? remoteUsername : "You"}{!isSharing && " · tap"}
             </span>
           </div>
         </motion.div>
       )}
 
-      {/* Camera preview before accepting */}
+      {/* Camera preview before accepting incoming video call */}
       <AnimatePresence>
         {callState === "receiving" && isVideo && (
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-            className="absolute bottom-40 right-4 z-20 w-28 h-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+            className="absolute bottom-44 right-4 z-20 w-28 h-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl bg-black"
           >
             <video ref={previewRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            <div className="absolute bottom-1 left-0 right-0 text-center">
-              <span className="text-[9px] text-white/70 bg-black/40 px-1.5 py-0.5 rounded-full">Preview</span>
+            <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
+              <span className="text-[9px] text-white/70 bg-black/50 px-1.5 py-0.5 rounded-full">Preview</span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Audio element for remote — always present */}
       <audio ref={remoteAudioRef} autoPlay />
 
-      {/* Center info */}
+      {/* Center info — shown when not in active video */}
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 gap-4 px-6">
-        {(!showVideo || (!showRemoteVideo && !isSharing && !swapped)) && !isConnected && (
+        {!isConnected && (
           <>
             <div className="relative flex items-center justify-center">
-              {(callState === "calling" || callState === "receiving") && [1, 2, 3].map((i) => (
+              {[1, 2, 3].map((i) => (
                 <motion.div key={i} className="absolute rounded-full border border-white/20"
                   animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
                   transition={{ duration: 2, repeat: Infinity, delay: i * 0.5, ease: "easeOut" }}
@@ -227,11 +264,11 @@ const CallOverlay = ({
           </>
         )}
 
-        {/* Duration overlay */}
+        {/* Duration + screen share indicator */}
         {isConnected && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full z-30">
+          <div className="absolute top-safe-top top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-4 py-1.5 rounded-full z-30 flex items-center gap-2">
             <span className="text-white text-sm font-medium">{fmt(callDuration)}</span>
-            {isSharing && <span className="ml-2 text-green-400 text-xs">● Sharing screen</span>}
+            {isSharing && <span className="text-green-400 text-xs font-medium">● Sharing screen</span>}
           </div>
         )}
       </div>
@@ -239,21 +276,27 @@ const CallOverlay = ({
       {/* Controls */}
       <div className="relative z-20 pb-10 flex flex-col items-center gap-4">
         {isConnected && (
-          <div className="flex items-center gap-3">
-            <button onClick={() => { onToggleMute(); setIsMuted((m) => !m); }}
-              className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-white/30 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}>
+          <div className="flex items-center gap-3 flex-wrap justify-center px-4">
+            <button
+              onClick={() => { onToggleMute(); setIsMuted((m) => !m); }}
+              className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-white/30 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}
+            >
               {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </button>
             {isVideo && (
-              <button onClick={() => { onToggleVideo(); setIsVideoOff((v) => !v); }}
-                className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isVideoOff ? "bg-white/30 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}>
+              <button
+                onClick={() => { onToggleVideo(); setIsVideoOff((v) => !v); }}
+                className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isVideoOff ? "bg-white/30 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}
+              >
                 {isVideoOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
               </button>
             )}
             {isVideo && (
-              <button onClick={toggleScreenShare}
-                className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isSharing ? "bg-green-500/60 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}
-                title="Share screen">
+              <button
+                onClick={toggleScreenShare}
+                className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isSharing ? "bg-green-500/70 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}
+                title="Share screen"
+              >
                 {isSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
               </button>
             )}
@@ -264,15 +307,19 @@ const CallOverlay = ({
           {callState === "receiving" && (
             <>
               <div className="flex flex-col items-center gap-2">
-                <button onClick={() => { Sounds.callDecline(); onReject(); }}
-                  className="h-16 w-16 rounded-full bg-destructive flex items-center justify-center shadow-lg hover:bg-destructive/80 transition-colors">
+                <button
+                  onClick={() => { Sounds.callDecline(); onReject(); }}
+                  className="h-16 w-16 rounded-full bg-destructive flex items-center justify-center shadow-lg hover:bg-destructive/80 transition-colors"
+                >
                   <PhoneMissed className="h-7 w-7 text-white" />
                 </button>
                 <span className="text-xs text-white/60">Decline</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <button onClick={() => { Sounds.callAccept(); onAccept(); }}
-                  className="h-16 w-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg hover:bg-green-400 transition-colors">
+                <button
+                  onClick={() => { Sounds.callAccept(); onAccept(); }}
+                  className="h-16 w-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg hover:bg-green-400 transition-colors"
+                >
                   <Phone className="h-7 w-7 text-white" />
                 </button>
                 <span className="text-xs text-white/60">Accept</span>
@@ -281,8 +328,10 @@ const CallOverlay = ({
           )}
           {(callState === "calling" || isConnected) && (
             <div className="flex flex-col items-center gap-2">
-              <button onClick={() => { Sounds.callEnd(); onEnd(); }}
-                className="h-16 w-16 rounded-full bg-destructive flex items-center justify-center shadow-lg hover:bg-destructive/80 transition-colors">
+              <button
+                onClick={() => { Sounds.callEnd(); onEnd(); }}
+                className="h-16 w-16 rounded-full bg-destructive flex items-center justify-center shadow-lg hover:bg-destructive/80 transition-colors"
+              >
                 <PhoneOff className="h-7 w-7 text-white" />
               </button>
               <span className="text-xs text-white/60">{callState === "calling" ? "Cancel" : "End"}</span>

@@ -295,6 +295,27 @@ export function useWebRTC() {
     localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = !t.enabled; });
   }, []);
 
+  // Replace video track in all peer connections (for screen share)
+  const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack | null) => {
+    const allPCs = [
+      peerConnection.current,
+      ...Array.from(peerConnections.current.values()),
+    ].filter(Boolean) as RTCPeerConnection[];
+
+    for (const pc of allPCs) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) {
+        if (newTrack) {
+          await sender.replaceTrack(newTrack).catch(() => {});
+        } else {
+          // Restore original camera track
+          const camTrack = localStreamRef.current?.getVideoTracks()[0];
+          if (camTrack) await sender.replaceTrack(camTrack).catch(() => {});
+        }
+      }
+    }
+  }, []);
+
   // Single stable channel — no callState in deps
   useEffect(() => {
     if (!user) return;
@@ -390,6 +411,6 @@ export function useWebRTC() {
   return {
     callState, callType, remoteUserId, remoteUsername,
     localStream, remoteStream, callDuration,
-    startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo,
+    startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo, replaceVideoTrack,
   };
 }
