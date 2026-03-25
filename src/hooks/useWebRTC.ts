@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { getAudioContext } from "@/lib/sounds";
 
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
@@ -20,30 +21,7 @@ export interface CallSignal {
   chatRoomId?: string;
 }
 
-// Single persistent AudioContext — created lazily on first user gesture
-let _audioCtx: AudioContext | null = null;
-
-function getAudioCtx(): AudioContext | null {
-  try {
-    if (!_audioCtx || _audioCtx.state === "closed") {
-      _audioCtx = new AudioContext();
-    }
-    if (_audioCtx.state === "suspended") {
-      _audioCtx.resume().catch(() => {});
-    }
-    return _audioCtx;
-  } catch {
-    return null;
-  }
-}
-
-// Prime on first user interaction so ringtone works immediately
-if (typeof window !== "undefined") {
-  const prime = () => getAudioCtx();
-  window.addEventListener("pointerdown", prime, { once: true, capture: true });
-  window.addEventListener("keydown",     prime, { once: true, capture: true });
-}
-
+// Single persistent AudioContext shared with sounds.ts
 function createRingtone() {
   let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -51,15 +29,16 @@ function createRingtone() {
     default: [[880, 0, 0.15], [1100, 0.2, 0.15], [880, 0.4, 0.15]],
     classic: [[660, 0, 0.2],  [660, 0.3, 0.2],  [660, 0.6, 0.2]],
     soft:    [[523, 0, 0.3],  [659, 0.35, 0.3], [784, 0.7, 0.3]],
-    pulse:   [[1000, 0, 0.08],[1000, 0.15, 0.08],[1000, 0.3, 0.08],[1000, 0.45, 0.08]],
+    pulse:   [[1000,0,0.08],  [1000,0.15,0.08], [1000,0.3,0.08], [1000,0.45,0.08]],
   };
 
   const ring = () => {
-    const ctx = getAudioCtx();
+    const ctx = getAudioContext();
     if (!ctx || ctx.state !== "running") return; // only play after user gesture
     try {
       const key = localStorage.getItem("chatflow_ringtone") || "default";
       const freqs = RINGTONE_FREQS[key] || RINGTONE_FREQS.default;
+      const t = ctx.currentTime;
       const gain = ctx.createGain();
       gain.gain.value = 0.25;
       gain.connect(ctx.destination);
@@ -68,8 +47,8 @@ function createRingtone() {
         osc.type = "sine";
         osc.frequency.value = freq;
         osc.connect(gain);
-        osc.start(ctx.currentTime + start);
-        osc.stop(ctx.currentTime + start + dur);
+        osc.start(t + start);
+        osc.stop(t + start + dur);
       });
     } catch {}
   };

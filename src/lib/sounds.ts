@@ -1,87 +1,86 @@
-// Lazy AudioContext — only created after a user gesture to satisfy browser autoplay policy
+// AudioContext — only ever created inside a click/keydown handler, never at module load
+// We store it once created and reuse it forever
+
 let _ctx: AudioContext | null = null;
 
-function getCtx(): AudioContext | null {
+export function getAudioContext(): AudioContext | null {
+  // If we have one and it's usable, return it
+  if (_ctx && _ctx.state !== "closed") {
+    if (_ctx.state === "suspended") _ctx.resume().catch(() => {});
+    return _ctx;
+  }
+  // Try to create — will only succeed if called from a user gesture
   try {
-    if (!_ctx || _ctx.state === "closed") {
-      _ctx = new AudioContext();
-    }
-    if (_ctx.state === "suspended") {
-      _ctx.resume().catch(() => {});
-    }
+    _ctx = new AudioContext();
     return _ctx;
   } catch {
     return null;
   }
 }
 
-// Prime the AudioContext on first user interaction so subsequent sounds work
-if (typeof window !== "undefined") {
-  const prime = () => { getCtx(); };
-  window.addEventListener("pointerdown", prime, { once: true });
-  window.addEventListener("keydown", prime, { once: true });
+// Call this once from any button click to unlock audio for the session
+export function unlockAudio() {
+  getAudioContext();
 }
 
-function play(fn: (c: AudioContext) => void) {
-  try {
-    const c = getCtx();
-    if (!c) return;
-    fn(c);
-  } catch {}
+function play(fn: (c: AudioContext, t: number) => void) {
+  const c = getAudioContext();
+  if (!c || c.state !== "running") return; // silently skip if not unlocked
+  try { fn(c, c.currentTime); } catch {}
 }
 
 export const Sounds = {
-  message: () => play((c) => {
+  message: () => play((c, t) => {
     const g = c.createGain();
-    g.gain.setValueAtTime(0.12, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.25);
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
     g.connect(c.destination);
     const o = c.createOscillator();
     o.type = "sine";
-    o.frequency.setValueAtTime(880, c.currentTime);
-    o.frequency.exponentialRampToValueAtTime(1200, c.currentTime + 0.1);
-    o.connect(g); o.start(); o.stop(c.currentTime + 0.25);
+    o.frequency.setValueAtTime(880, t);
+    o.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
+    o.connect(g); o.start(t); o.stop(t + 0.25);
   }),
 
-  callAccept: () => play((c) => {
+  callAccept: () => play((c, t) => {
     const g = c.createGain();
-    g.gain.setValueAtTime(0.18, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.5);
+    g.gain.setValueAtTime(0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
     g.connect(c.destination);
-    [[523, 0], [659, 0.15], [784, 0.3]].forEach(([freq, t]) => {
+    [[523, 0], [659, 0.15], [784, 0.3]].forEach(([freq, dt]) => {
       const o = c.createOscillator(); o.type = "sine"; o.frequency.value = freq;
-      o.connect(g); o.start(c.currentTime + t); o.stop(c.currentTime + t + 0.15);
+      o.connect(g); o.start(t + dt); o.stop(t + dt + 0.15);
     });
   }),
 
-  callDecline: () => play((c) => {
+  callDecline: () => play((c, t) => {
     const g = c.createGain();
-    g.gain.setValueAtTime(0.18, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.4);
+    g.gain.setValueAtTime(0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
     g.connect(c.destination);
-    [[400, 0], [300, 0.2]].forEach(([freq, t]) => {
+    [[400, 0], [300, 0.2]].forEach(([freq, dt]) => {
       const o = c.createOscillator(); o.type = "sawtooth"; o.frequency.value = freq;
-      o.connect(g); o.start(c.currentTime + t); o.stop(c.currentTime + t + 0.15);
+      o.connect(g); o.start(t + dt); o.stop(t + dt + 0.15);
     });
   }),
 
-  callEnd: () => play((c) => {
+  callEnd: () => play((c, t) => {
     const g = c.createGain();
-    g.gain.setValueAtTime(0.15, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.4);
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
     g.connect(c.destination);
     const o = c.createOscillator(); o.type = "sine";
-    o.frequency.setValueAtTime(600, c.currentTime);
-    o.frequency.exponentialRampToValueAtTime(200, c.currentTime + 0.4);
-    o.connect(g); o.start(); o.stop(c.currentTime + 0.4);
+    o.frequency.setValueAtTime(600, t);
+    o.frequency.exponentialRampToValueAtTime(200, t + 0.4);
+    o.connect(g); o.start(t); o.stop(t + 0.4);
   }),
 
-  sent: () => play((c) => {
+  sent: () => play((c, t) => {
     const g = c.createGain();
-    g.gain.setValueAtTime(0.07, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.12);
+    g.gain.setValueAtTime(0.07, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
     g.connect(c.destination);
     const o = c.createOscillator(); o.type = "sine"; o.frequency.value = 1000;
-    o.connect(g); o.start(); o.stop(c.currentTime + 0.12);
+    o.connect(g); o.start(t); o.stop(t + 0.12);
   }),
 };
