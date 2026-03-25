@@ -19,11 +19,13 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
 
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [ringtone, setRingtone] = useState("default");
+  const [ghostMode, setGhostMode] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   const RINGTONES = [
@@ -49,9 +51,11 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
     if (open && profile) {
       setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
+      setBio((profile as any).bio || "");
       setAvatarUrl(profile.avatar_url || "");
       setMessage("");
       setRingtone(localStorage.getItem("chatflow_ringtone") || "default");
+      setGhostMode(localStorage.getItem("chatflow_ghost_mode") === "true");
     }
   }, [open, profile]);
 
@@ -86,12 +90,13 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
     const cleanUrl = avatarUrl.split("?t=")[0] || null;
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: displayName.trim() || null, username: username.trim(), avatar_url: cleanUrl })
+      .update({ display_name: displayName.trim() || null, username: username.trim(), avatar_url: cleanUrl, bio: bio.trim() || null } as any)
       .eq("id", user.id);
     if (error) {
       setMessage(error.message.includes("unique") ? "Username already taken" : error.message);
     } else {
       localStorage.setItem("chatflow_ringtone", ringtone);
+      localStorage.setItem("chatflow_ghost_mode", String(ghostMode));
       await refreshProfile();
       setMessage("Profile updated!");
       setTimeout(() => { setMessage(""); onClose(); }, 1000);
@@ -169,10 +174,36 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                     placeholder="username" />
                 </div>
                 <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Bio</label>
+                  <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={2}
+                    className="w-full bg-muted text-sm text-foreground placeholder:text-muted-foreground rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary transition-all resize-none"
+                    placeholder="Tell people about yourself..." maxLength={160} />
+                  <p className="text-[10px] text-muted-foreground text-right mt-0.5">{bio.length}/160</p>
+                </div>
+                <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
                   <input value={user?.email || ""} disabled
                     className="w-full bg-muted/40 text-sm text-muted-foreground rounded-xl px-3 py-2.5 cursor-not-allowed" />
                 </div>
+              </div>
+
+              {/* Ghost Mode */}
+              <div className="mb-5">
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Privacy</label>
+                <button
+                  onClick={() => setGhostMode((g) => !g)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                    ghostMode ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">Ghost Mode</span>
+                    <span className="text-[10px] opacity-70">Read messages without sending seen receipts or typing indicators</span>
+                  </div>
+                  <div className={`h-5 w-9 rounded-full transition-colors shrink-0 ml-3 ${ghostMode ? "bg-primary" : "bg-muted-foreground/30"}`}>
+                    <div className={`h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${ghostMode ? "translate-x-4 ml-0.5" : "translate-x-0.5"}`} />
+                  </div>
+                </button>
               </div>
 
               {/* Ringtone */}

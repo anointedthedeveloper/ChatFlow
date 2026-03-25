@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply, Pencil, Search, Pin, PinOff } from "lucide-react";
+import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply, Pencil, Search, Pin, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
@@ -19,6 +19,7 @@ interface Message {
   content: string;
   is_read: boolean;
   is_delivered?: boolean;
+  is_edited?: boolean;
   created_at: string;
   file_url?: string | null;
   file_type?: string | null;
@@ -34,7 +35,7 @@ interface ChatPanelProps {
   chat: EnrichedChatRoom;
   messages: Message[];
   reactions?: Array<{ id: string; message_id: string; user_id: string; emoji: string }>;
-  onSendMessage: (text: string, fileUrl?: string, fileType?: string, fileName?: string, replyToId?: string, replyToText?: string, replyToSender?: string) => void;
+  onSendMessage: (text: string, fileUrl?: string, fileType?: string, fileName?: string, replyToId?: string, replyToText?: string, replyToSender?: string, scheduledFor?: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
   onReact?: (msgId: string, emoji: string) => void;
@@ -81,6 +82,9 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleTime, setScheduleTime] = useState("");
+  const ghostMode = localStorage.getItem("chatflow_ghost_mode") === "true";
 
   const prevMsgCount = useRef(messages.length);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -123,7 +127,13 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
     return { url: urlData.publicUrl, type: customType || file.type, name: file.name };
   }, [user]);
 
-  const handleSend = async () => {
+  // Mark messages as read (skip if ghost mode)
+  useEffect(() => {
+    if (ghostMode || !user || !activeChatId) return;
+    // handled in useChat fetchMessages
+  }, [ghostMode, user, activeChatId]);
+
+  const handleSend = async (scheduledFor?: Date) => {
     if (!input.trim() && !selectedFile) return;
 
     // Edit mode
@@ -151,12 +161,20 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
     onSendMessage(
       input.trim() || (fileName ? `📎 ${fileName}` : ""),
       fileUrl, fileType, fileName,
-      replyTo?.id, replyTo?.text, replyTo?.senderName
+      replyTo?.id, replyTo?.text, replyTo?.senderName,
+      scheduledFor?.toISOString()
     );
     setInput("");
     setReplyTo(null);
     setUploading(false);
+    setShowSchedule(false);
+    setScheduleTime("");
     Sounds.sent();
+  };
+
+  const handleScheduleSend = () => {
+    if (!scheduleTime) return;
+    handleSend(new Date(scheduleTime));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -429,6 +447,7 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
                   timestamp: msgDate,
                   read: msg.is_read,
                   delivered: msg.is_delivered,
+                  isEdited: msg.is_edited,
                   fileUrl: msg.file_url || undefined,
                   fileType: msg.file_type || undefined,
                   fileName: msg.file_name || undefined,
@@ -548,6 +567,43 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
                   placeholder="Type a message..."
                   className="flex-1 bg-muted text-sm text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
+                {hasInput && (
+                  <div className="relative">
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowSchedule((s) => !s)}
+                      className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                        showSchedule ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="Schedule message">
+                      <Clock className="h-4 w-4" />
+                    </motion.button>
+                    <AnimatePresence>
+                      {showSchedule && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                          className="absolute bottom-11 right-0 bg-card border border-border rounded-2xl shadow-xl p-3 z-20 w-64"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <p className="text-xs font-semibold text-foreground mb-2">Schedule message</p>
+                          <input
+                            type="datetime-local"
+                            value={scheduleTime}
+                            onChange={(e) => setScheduleTime(e.target.value)}
+                            min={new Date().toISOString().slice(0, 16)}
+                            className="w-full bg-muted text-xs text-foreground rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary mb-2"
+                          />
+                          <button
+                            onClick={handleScheduleSend}
+                            disabled={!scheduleTime}
+                            className="w-full gradient-primary text-primary-foreground text-xs rounded-lg py-1.5 font-medium disabled:opacity-40"
+                          >
+                            Schedule Send
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
                 {hasInput ? (
                   <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                     onClick={handleSend} disabled={uploading}

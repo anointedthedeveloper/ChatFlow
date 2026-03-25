@@ -32,6 +32,7 @@ interface Message {
   content: string;
   is_read: boolean;
   is_delivered?: boolean;
+  is_edited?: boolean;
   created_at: string;
   file_type?: string | null;
   reply_to_id?: string | null;
@@ -192,8 +193,9 @@ export function useChat() {
       setReactions([]);
     }
 
-    // Mark unread as read
-    if (user) {
+    // Skip read receipts in ghost mode
+    const ghostMode = localStorage.getItem("chatflow_ghost_mode") === "true";
+    if (user && !ghostMode) {
       await supabase
         .from("messages")
         .update({ is_read: true })
@@ -201,28 +203,25 @@ export function useChat() {
         .eq("is_read", false)
         .neq("sender_id", user.id);
     }
-    // Mark as delivered — silently skip if column doesn't exist
     if (user) {
       supabase
         .from("messages")
         .update({ is_delivered: true } as any)
         .eq("chat_room_id", activeChatId)
         .neq("sender_id", user.id)
-        .then(() => {}) // fire and forget, ignore 400 if column missing
+        .then(() => {})
         .catch(() => {});
     }
   }, [activeChatId, user]);
 
   // Send message — blocked if pending and not the requester, or if requester already sent 1 msg
   const sendMessage = useCallback(
-    async (text: string, fileUrl?: string, fileType?: string, fileName?: string, replyToId?: string, replyToText?: string, replyToSender?: string) => {
+    async (text: string, fileUrl?: string, fileType?: string, fileName?: string, replyToId?: string, replyToText?: string, replyToSender?: string, scheduledFor?: string) => {
       if (!user || !activeChatId || (!text.trim() && !fileUrl)) return;
 
       const activeRoom = chatRooms.find((r) => r.id === activeChatId);
       if (activeRoom?.isPending) {
-        // Receiver cannot reply until accepted
         if (!activeRoom.isRequester) return;
-        // Requester limited to 1 message
         const { count } = await supabase.from("messages").select("id", { count: "exact", head: true })
           .eq("chat_room_id", activeChatId).eq("sender_id", user.id);
         if ((count ?? 0) >= 1) return;
@@ -239,6 +238,7 @@ export function useChat() {
       if (replyToId) insertData.reply_to_id = replyToId;
       if (replyToText) insertData.reply_to_text = replyToText;
       if (replyToSender) insertData.reply_to_sender = replyToSender;
+      if (scheduledFor) insertData.scheduled_for = scheduledFor;
 
       await supabase.from("messages").insert(insertData);
     },
@@ -366,17 +366,41 @@ export function useChat() {
     [sendSystemMessage, fetchChatRooms]
   );
 
+  const reactionsRef = useRef<Reaction[]>([]);
+  useEffect(() => { reactionsRef.current = reactions; }, [reactions]);
+
   const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!user) return;
-    const existing = reactions.find((r) => r.message_id === messageId && r.user_id === user.id && r.emoji === emoji);
+    // Use ref to avoid stale closure
+    const existing = reactionsRef.current.find(
+      (r) => r.message_id === messageId && r.user_id === user.id && r.emoji === emoji
+    );
     if (existing) {
-      await supabase.from("reactions").delete().eq("id", existing.id);
+      // Optimistic remove
       setReactions((prev) => prev.filter((r) => r.id !== existing.id));
+      const { error } = await supabase.from("reactions").delete().eq("id", existing.id);
+      if (error) {
+        // Rollback on failure
+        setReactions((prev) => [...prev, existing]);
+      }
     } else {
-      const { data } = await supabase.from("reactions").insert({ message_id: messageId, user_id: user.id, emoji }).select().single();
-      if (data) setReactions((prev) => [...prev, data as Reaction]);
+      // Optimistic add with temp id
+      const tempId = `temp-${Date.now()}`;
+      const optimistic: Reaction = { id: tempId, message_id: messageId, user_id: user.id, emoji };
+      setReactions((prev) => [...prev, optimistic]);
+      const { data, error } = await supabase
+        .from("reactions")
+        .insert({ message_id: messageId, user_id: user.id, emoji })
+        .select().single();
+      if (error) {
+        // Rollback
+        setReactions((prev) => prev.filter((r) => r.id !== tempId));
+      } else if (data) {
+        // Replace temp with real
+        setReactions((prev) => prev.map((r) => r.id === tempId ? data as Reaction : r));
+      }
     }
-  }, [user, reactions]);
+  }, [user]);
 
   const pinMessage = useCallback(async (chatRoomId: string, messageId: string, text: string) => {
     await supabase.from("chat_rooms").update({ pinned_message_id: messageId, pinned_message_text: text } as any).eq("id", chatRoomId);
@@ -390,7 +414,7 @@ export function useChat() {
 
   const editMessage = useCallback(
     async (messageId: string, newText: string) => {
-      await supabase.from("messages").update({ content: newText } as any).eq("id", messageId);
+      await supabase.from("messages").update({ content: newText, is_edited: true } as any).eq("id", messageId);
     },
     []
   );

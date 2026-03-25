@@ -335,6 +335,9 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
                     {!chat.is_group && profile?.username && (
                       <p className="text-xs text-muted-foreground mt-0.5">@{profile.username}</p>
                     )}
+                    {!chat.is_group && (profile as any)?.bio && (
+                      <p className="text-xs text-muted-foreground mt-1 text-center px-3 italic">{(profile as any).bio}</p>
+                    )}
                   </>
                 )}
 

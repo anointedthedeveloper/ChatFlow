@@ -12,6 +12,7 @@ interface MessageData {
   timestamp: Date;
   read: boolean;
   delivered?: boolean;
+  isEdited?: boolean;
   fileUrl?: string;
   fileType?: string;
   fileName?: string;
@@ -334,6 +335,9 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
                 <span className={`text-[10px] ${isMine ? "text-primary-foreground/50" : "text-muted-foreground"}`}>
                   {formatTime(message.timestamp)}
                 </span>
+                {message.isEdited && (
+                  <span className={`text-[9px] italic ${isMine ? "text-primary-foreground/40" : "text-muted-foreground/60"}`}>edited</span>
+                )}
                 {isMine && (
                   message.read
                     ? <CheckCheck className="h-3.5 w-3.5 text-sky-300" title="Seen" />
