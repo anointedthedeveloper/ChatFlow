@@ -335,6 +335,33 @@ export function useChat() {
     typingTimeoutRef.current = setTimeout(() => channel.track({ typing: false }), 2000);
   }, [user]);
 
+  // ── PWA app badge — total unread across all rooms ──
+  useEffect(() => {
+    const total = chatRooms.reduce((sum, r) => sum + r.unreadCount, 0);
+    if ("setAppBadge" in navigator) {
+      if (total > 0) {
+        (navigator as any).setAppBadge(total).catch(() => {});
+      } else {
+        (navigator as any).clearAppBadge().catch(() => {});
+      }
+    }
+    // Also update document title
+    document.title = total > 0 ? `(${total}) ChatFlow` : "ChatFlow";
+  }, [chatRooms]);
+
+  // ── PWA app badge — total unread across all rooms ──
+  useEffect(() => {
+    const total = chatRooms.reduce((sum, r) => sum + r.unreadCount, 0);
+    if ("setAppBadge" in navigator) {
+      if (total > 0) {
+        (navigator as any).setAppBadge(total).catch(() => {});
+      } else {
+        (navigator as any).clearAppBadge().catch(() => {});
+      }
+    }
+    document.title = total > 0 ? `(${total}) ChatFlow` : "ChatFlow";
+  }, [chatRooms]);
+
   // Request push notification permission
   useEffect(() => {
     if (!user || !("Notification" in window)) return;

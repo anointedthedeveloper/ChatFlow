@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, MessageSquarePlus, Users, Settings, X, LogOut, Phone, Video, Mic, CheckCheck, Columns2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import AvatarBubble from "./AvatarBubble";
@@ -108,7 +109,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
       <div className="px-4 py-3 flex items-center justify-between border-b border-sidebar-border">
         <button
           onClick={() => setShowProfile(true)}
-          className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2.5 hover:opacity-90 transition-all hover-scale rounded-lg px-1 py-0.5"
         >
           <AvatarBubble
             letter={profile?.username?.[0]?.toUpperCase() || "A"}
@@ -125,24 +126,32 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
         </button>
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          <button
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
             onClick={() => setShowProfile(true)}
             className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
           >
             <Settings className="h-4 w-4" />
-          </button>
-          <button
+          </motion.button>
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
             onClick={() => { setShowNewChat(!showNewChat); setSearch(""); }}
             className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
           >
             <MessageSquarePlus className="h-4 w-4" />
-          </button>
+          </motion.button>
         </div>
       </div>
 
       {/* New Chat Panel */}
-      {showNewChat && (
-        <div className="px-3 py-2 border-b border-sidebar-border space-y-2 bg-sidebar-accent/20">
+      <AnimatePresence>
+        {showNewChat && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden border-b border-sidebar-border bg-sidebar-accent/20"
+          >
+          <div className="px-3 py-2 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex gap-1.5">
               <button
@@ -237,8 +246,10 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
                 : `Create Group · ${selectedMembers.length} member${selectedMembers.length > 1 ? "s" : ""}`}
             </button>
           )}
-        </div>
-      )}
+          </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Search bar with user results dropdown */}
       <div className="px-3 py-2" ref={searchRef}>
@@ -295,11 +306,16 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
             <p className="text-xs text-muted-foreground">No chats yet.<br />Start a new conversation!</p>
           </div>
         )}
-        {filteredChats.map((chat) => (
-          <div
+        {filteredChats.map((chat, i) => (
+          <motion.div
             key={chat.id}
-            className={`group flex items-center gap-3 px-4 py-3 transition-all hover:bg-sidebar-accent/40 border-l-2 cursor-pointer ${
-              chat.id === activeChatId ? "bg-sidebar-accent/60 border-primary" : "border-transparent"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.15, delay: Math.min(i * 0.03, 0.3) }}
+            className={`chat-item group flex items-center gap-3 px-4 py-3 border-l-2 cursor-pointer ${
+              chat.id === activeChatId
+                ? "bg-sidebar-accent/60 border-primary"
+                : "border-transparent hover:bg-sidebar-accent/40"
             }`}
           >
             <div className="flex-1 flex items-center gap-3 min-w-0" onClick={() => onSelectChat(chat.id)}>
@@ -328,15 +344,21 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
                     </p>
                   </div>
                   {chat.unreadCount > 0 && (
-                    <span className="shrink-0 h-5 min-w-[20px] px-1.5 rounded-full gradient-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                      className="shrink-0 h-5 min-w-[20px] px-1.5 rounded-full gradient-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center"
+                    >
                       {chat.unreadCount}
-                    </span>
+                    </motion.span>
                   )}
                 </div>
               </div>
             </div>
             {onOpenSecondChat && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
                 onClick={(e) => { e.stopPropagation(); onOpenSecondChat(chat.id); }}
                 title="Open in split view"
                 className={`opacity-0 group-hover:opacity-100 h-6 w-6 rounded flex items-center justify-center transition-all shrink-0 ${
@@ -344,9 +366,9 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
                 }`}
               >
                 <Columns2 className="h-3.5 w-3.5" />
-              </button>
+              </motion.button>
             )}
-          </div>
+          </motion.div>
         ))}
         {filteredChats.length === 0 && search && (
           <p className="text-xs text-muted-foreground text-center py-6">No chats match "{search}"</p>

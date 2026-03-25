@@ -284,6 +284,129 @@
   .bg-offline { background: hsl(var(--offline)); }
   .text-online { color: hsl(var(--online)); }
 
+  /* ── Animations ── */
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes pop-in {
+    0%   { opacity: 0; transform: scale(0.85); }
+    70%  { transform: scale(1.04); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pulse-ring {
+    0%   { transform: scale(1);   opacity: 0.6; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+  }
+  @keyframes bounce-in {
+    0%   { transform: scale(0); }
+    60%  { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25%       { transform: rotate(-6deg); }
+    75%       { transform: rotate(6deg); }
+  }
+
+  .animate-slide-up        { animation: slide-up 0.2s ease both; }
+  .animate-slide-in-left   { animation: slide-in-left 0.2s ease both; }
+  .animate-slide-in-right  { animation: slide-in-right 0.2s ease both; }
+  .animate-fade-in         { animation: fade-in 0.18s ease both; }
+  .animate-pop-in          { animation: pop-in 0.25s cubic-bezier(.34,1.56,.64,1) both; }
+  .animate-bounce-in       { animation: bounce-in 0.3s cubic-bezier(.34,1.56,.64,1) both; }
+  .animate-wiggle          { animation: wiggle 0.4s ease; }
+
+  /* Stagger helpers */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.10s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.20s; }
+
+  /* ── Hover effects ── */
+  .hover-lift {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px hsl(var(--primary) / 0.25);
+  }
+  .hover-glow:hover {
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.4);
+    transition: box-shadow 0.18s ease;
+  }
+  .hover-scale {
+    transition: transform 0.15s ease;
+  }
+  .hover-scale:hover  { transform: scale(1.06); }
+  .hover-scale:active { transform: scale(0.96); }
+
+  /* Button press ripple */
+  .btn-press {
+    transition: transform 0.1s ease, opacity 0.1s ease;
+  }
+  .btn-press:active { transform: scale(0.93); opacity: 0.85; }
+
+  /* Shimmer loading skeleton */
+  .shimmer {
+    background: linear-gradient(90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.15) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% auto;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  /* Chat list item hover */
+  .chat-item {
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+  }
+  .chat-item:hover  { transform: translateX(2px); }
+  .chat-item:active { transform: translateX(1px) scale(0.99); }
+
+  /* Avatar pulse for online status */
+  .status-online-pulse::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 2px solid hsl(var(--online));
+    animation: pulse-ring 1.8s ease-out infinite;
+  }
+
+  /* Message bubble hover */
+  .msg-bubble {
+    transition: filter 0.15s ease;
+  }
+  .msg-bubble:hover { filter: brightness(1.06); }
+
+  /* Input focus glow */
+  .input-glow:focus {
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3), 0 0 12px hsl(var(--primary) / 0.15);
+  }
+
+  /* Unread badge pop */
+  .badge-pop {
+    animation: bounce-in 0.3s cubic-bezier(.34,1.56,.64,1) both;
+  }
+
   /* Doodle theme pattern overlay */
   .theme-doodle .chat-messages-bg::before {
     content: "";

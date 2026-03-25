@@ -133,9 +133,9 @@ const MessageBubble = ({ message, isMine, onReply, showDate }: MessageBubbleProp
       {showDate && <DateSeparator date={message.timestamp} />}
 
       <motion.div
-        initial={{ opacity: 0, y: 6, scale: 0.98 }}
+        initial={{ opacity: 0, y: 8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.12 }}
+        transition={{ duration: 0.15, ease: [0.34, 1.56, 0.64, 1] }}
         className={`flex ${isMine ? "justify-end" : "justify-start"} px-4 py-0.5 group`}
         onDoubleClick={() => onReply?.(message)}
         onClick={handleTap}
@@ -143,13 +143,15 @@ const MessageBubble = ({ message, isMine, onReply, showDate }: MessageBubbleProp
         <div className="flex flex-col max-w-[72%]">
           {/* Reply preview */}
           {message.replyTo && (
-            <div className={`text-[11px] px-3 py-1.5 rounded-t-xl mb-0.5 border-l-2 border-primary/60 ${isMine ? "bg-primary/20 self-end" : "bg-muted self-start"}`}>
+            <motion.div
+              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+              className={`text-[11px] px-3 py-1.5 rounded-t-xl mb-0.5 border-l-2 border-primary/60 ${isMine ? "bg-primary/20 self-end" : "bg-muted self-start"}`}>
               <span className="font-semibold text-primary text-[11px]">{message.replyTo.senderName}</span>
               <p className="truncate text-muted-foreground text-[11px] max-w-[200px]">{message.replyTo.text}</p>
-            </div>
+            </motion.div>
           )}
 
-          <div className={`relative px-3 py-2 ${
+          <div className={`msg-bubble relative px-3 py-2 ${
             isCall
               ? `flex items-center gap-2 rounded-xl ${isMine ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`
               : isMine
@@ -158,12 +160,15 @@ const MessageBubble = ({ message, isMine, onReply, showDate }: MessageBubbleProp
           }`}>
             {/* Hover reply button */}
             {!isCall && (
-              <button
+              <motion.button
+                initial={{ opacity: 0, scale: 0.7 }}
+                whileHover={{ scale: 1.15 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={(e) => { e.stopPropagation(); onReply?.(message); }}
                 className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shadow-sm ${isMine ? "-left-9" : "-right-9"}`}
               >
                 <Reply className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
+              </motion.button>
             )}
 
             {/* Call indicator */}

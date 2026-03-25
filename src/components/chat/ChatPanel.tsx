@@ -199,10 +199,11 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
       {/* Header */}
       <div className="px-3 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <button onClick={onToggleSidebar} className="lg:hidden h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground shrink-0">
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+            onClick={onToggleSidebar} className="lg:hidden h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground shrink-0">
             <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button onClick={onToggleProfile} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity min-w-0">
+          </motion.button>
+          <button onClick={onToggleProfile} className="flex items-center gap-2.5 hover:opacity-90 transition-all hover-scale rounded-lg px-1 py-0.5 min-w-0">
             <AvatarBubble
               letter={chat.displayAvatar}
               status={chat.is_group ? undefined : (chat.otherMemberStatus as "online" | "offline" | undefined)}
@@ -219,31 +220,35 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
           </button>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {/* Message count badge */}
           {messages.length > 0 && (
             <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{messages.length}</span>
           )}
           {isSecondPanel && (
             <>
-              <button onClick={onToggleSecondProfile} className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground`}>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                onClick={onToggleSecondProfile} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                 <Info className="h-4 w-4" />
-              </button>
-              <button onClick={onToggleSidebar} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Close split view">
+              </motion.button>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                onClick={onToggleSidebar} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Close split view">
                 <X className="h-4 w-4" />
-              </button>
+              </motion.button>
             </>
           )}
           {!isSecondPanel && (
             <>
-              <button onClick={() => onStartCall("audio")} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+              <motion.button whileHover={{ scale: 1.1, color: "hsl(var(--primary))" }} whileTap={{ scale: 0.9 }}
+                onClick={() => onStartCall("audio")} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground">
                 <Phone className="h-4 w-4" />
-              </button>
-              <button onClick={() => onStartCall("video")} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+              </motion.button>
+              <motion.button whileHover={{ scale: 1.1, color: "hsl(var(--primary))" }} whileTap={{ scale: 0.9 }}
+                onClick={() => onStartCall("video")} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground">
                 <Video className="h-4 w-4" />
-              </button>
-              <button onClick={onToggleProfile} className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors ${profileOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
+              </motion.button>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                onClick={onToggleProfile} className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors ${profileOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
                 <Info className="h-4 w-4" />
-              </button>
+              </motion.button>
             </>
           )}
         </div>
