@@ -88,7 +88,7 @@ const ChatPage = () => {
           <ChatPanel
             chat={activeChat}
             messages={messages}
-            onSendMessage={(text, fileUrl, fileType, fileName) => sendMessage(text, fileUrl, fileType, fileName)}
+            onSendMessage={(text, fileUrl, fileType, fileName, replyToId, replyToText, replyToSender) => sendMessage(text, fileUrl, fileType, fileName, replyToId, replyToText, replyToSender)}
             onStartCall={handleStartCall}
             onTyping={sendTyping}
             isOtherTyping={isOtherTyping}
@@ -107,6 +107,7 @@ const ChatPage = () => {
             open={profileOpen}
             onClose={() => setProfileOpen(false)}
             onStartCall={handleStartCall}
+            onRefresh={fetchChatRooms}
           />
         )}
       </div>

@@ -30,6 +30,9 @@ interface Message {
   content: string;
   is_read: boolean;
   created_at: string;
+  reply_to_id?: string | null;
+  reply_to_text?: string | null;
+  reply_to_sender?: string | null;
 }
 
 export interface EnrichedChatRoom extends ChatRoom {
@@ -158,7 +161,7 @@ export function useChat() {
 
   // Send message
   const sendMessage = useCallback(
-    async (text: string, fileUrl?: string, fileType?: string, fileName?: string) => {
+    async (text: string, fileUrl?: string, fileType?: string, fileName?: string, replyToId?: string, replyToText?: string, replyToSender?: string) => {
       if (!user || !activeChatId || (!text.trim() && !fileUrl)) return;
 
       const insertData: any = {
@@ -169,6 +172,9 @@ export function useChat() {
       if (fileUrl) insertData.file_url = fileUrl;
       if (fileType) insertData.file_type = fileType;
       if (fileName) insertData.file_name = fileName;
+      if (replyToId) insertData.reply_to_id = replyToId;
+      if (replyToText) insertData.reply_to_text = replyToText;
+      if (replyToSender) insertData.reply_to_sender = replyToSender;
 
       await supabase.from("messages").insert(insertData);
     },
