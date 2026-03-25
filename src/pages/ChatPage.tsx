@@ -17,7 +17,7 @@ const ChatPage = () => {
   const {
     chatRooms, activeChat, activeChatId, setActiveChatId,
     messages, sendMessage, createDirectMessage, createGroupChat,
-    isOtherTyping, sendTyping,
+    isOtherTyping, sendTyping, fetchChatRooms,
   } = useChat();
 
   const {
