@@ -297,9 +297,9 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
   const markdownPreview = useMemo(() => isMarkdown ? markdownBlocks(currentContent) : null, [currentContent, isMarkdown]);
 
   return (
-    <div className={fullscreen ? "fixed inset-0 z-50 bg-background" : "h-full w-[980px] border-l border-border bg-background shrink-0"}>
+    <div className={fullscreen ? "fixed inset-0 z-50 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]" : "h-full w-[980px] border-l border-border bg-background shrink-0"}>
       <div className="h-full flex flex-col">
-        <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-card/80">
+        <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2 bg-card/85 backdrop-blur-xl">
           <svg className="h-4 w-4 text-foreground shrink-0" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate">{owner}/{repo}</p>
@@ -314,14 +314,14 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className="w-64 shrink-0 border-r border-border bg-card/40 overflow-y-auto py-2 px-1">
+          <div className="w-64 shrink-0 border-r border-border/70 bg-card/50 overflow-y-auto py-2 px-1">
             {loading ? <p className="text-xs text-muted-foreground text-center py-4">Loading files...</p> : renderTree()}
           </div>
 
           <div className="flex-1 flex flex-col overflow-hidden">
             {selectedFile ? (
               <>
-                <div className="px-3 py-2 border-b border-border flex items-center gap-2 flex-wrap bg-card/40">
+                <div className="px-3 py-2 border-b border-border/70 flex items-center gap-2 flex-wrap bg-card/55">
                   <span className="text-xs text-muted-foreground flex-1 truncate font-mono">{selectedFile.path}</span>
                   <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
                     <button onClick={() => setViewMode("code")} className={`h-7 px-2 rounded-lg text-[11px] ${viewMode === "code" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>Code</button>
@@ -341,9 +341,9 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
                   </div>
                 )}
 
-                <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.01),transparent)]">
                   {showCode && (
-                    <div className={`${showPreview ? "w-1/2 border-r border-border" : "w-full"} overflow-auto`}>
+                    <div className={`${showPreview ? "w-1/2 border-r border-border/70" : "w-full"} overflow-auto`}>
                       {loadingFile ? <p className="text-xs text-muted-foreground text-center py-8">Loading file...</p> : editing ? (
                         <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full h-full bg-[#0f172a] text-[#dbeafe] text-xs font-mono p-4 outline-none resize-none leading-6" style={{ minHeight: "100%", tabSize: 2 }} spellCheck={false} />
                       ) : (
@@ -364,9 +364,15 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
                   )}
 
                   {showPreview && (
-                    <div className={`${showCode ? "w-1/2" : "w-full"} overflow-auto bg-card/30`}>
+                    <div className={`${showCode ? "w-1/2" : "w-full"} overflow-auto bg-card/35`}>
                       {isMarkdown ? (
-                        <div className="max-w-4xl px-6 py-6 space-y-4">{markdownPreview}</div>
+                        <div className="max-w-4xl px-6 py-6 space-y-4">
+                          <div className="mb-5 rounded-2xl border border-border/70 bg-background/75 px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Preview</p>
+                            <p className="mt-1 text-sm font-medium text-foreground">{selectedFile.path}</p>
+                          </div>
+                          {markdownPreview}
+                        </div>
                       ) : preview ? (
                         <iframe key={`${selectedFile.path}-${previewNonce}-${editing ? "edit" : "view"}`} title="Preview sandbox" sandbox="allow-scripts" className="h-full w-full border-0 bg-white" srcDoc={preview} />
                       ) : (
@@ -376,7 +382,7 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
                   )}
                 </div>
 
-                <div className="h-44 border-t border-border bg-[#090d18] text-slate-200 flex flex-col">
+                <div className="h-44 border-t border-border/70 bg-[#090d18] text-slate-200 flex flex-col">
                   <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 text-xs"><TerminalSquare className="h-4 w-4 text-primary" />Console</div>
                   <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 text-xs font-mono">
                     {consoleLines.map((line) => <div key={line.id} className={line.kind === "stderr" ? "text-rose-300" : line.kind === "stdout" ? "text-emerald-300" : line.kind === "input" ? "text-sky-300" : "text-slate-400"}>{line.kind === "input" ? "> " : ""}{line.text}</div>)}
@@ -402,7 +408,7 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
           </div>
         </div>
 
-        <div className="h-8 border-t border-border bg-card/80 px-3 flex items-center justify-between text-[10px] text-muted-foreground">
+        <div className="h-8 border-t border-border/70 bg-card/85 px-3 flex items-center justify-between text-[10px] text-muted-foreground">
           <div className="flex items-center gap-3">
             <span>{owner}/{repo}</span>
             <span>{branch}</span>

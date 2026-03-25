@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageSquare, Users, CheckSquare, GitCommit, Phone, ArrowLeft, LayoutGrid, TrendingUp, Clock, Circle } from "lucide-react";
+import { MessageSquare, Users, CheckSquare, GitCommit, Phone, ArrowLeft, LayoutGrid, Circle, FolderKanban, Github, Activity, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -77,10 +77,15 @@ const DashboardPage = () => {
     { label: "Open Tasks", value: openTasks, icon: CheckSquare, color: "text-yellow-500" },
   ];
 
+  const completionRate = useMemo(() => {
+    const total = tasks.length || 1;
+    return Math.round((doneTasks / total) * 100);
+  }, [doneTasks, tasks.length]);
+
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.10),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-4 shrink-0">
+      <div className="px-6 py-4 border-b border-border/60 bg-card/80 backdrop-blur-xl flex items-center gap-4 shrink-0">
         <button onClick={() => navigate("/workspace")} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -96,12 +101,59 @@ const DashboardPage = () => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 overflow-hidden rounded-[30px] border border-border/70 bg-card/80 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.10)]"
+        >
+          <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr] p-6 lg:p-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground mb-4">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Workspace command center
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-semibold tracking-tight text-foreground">
+                {activeWorkspace ? activeWorkspace.name : "Your developer workspace"}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Track team activity, GitHub momentum, and task delivery from one place without bouncing between tools.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button onClick={() => navigate("/workspace")} className="rounded-xl gradient-primary px-4 py-2.5 text-sm font-medium text-white">
+                  Open Workspace
+                </button>
+                <button onClick={() => navigate("/")} className="rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground">
+                  Go to Chats
+                </button>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="rounded-2xl border border-border/70 bg-background/75 p-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                  Delivery pulse
+                </div>
+                <p className="text-2xl font-semibold text-foreground">{completionRate}%</p>
+                <p className="text-xs text-muted-foreground mt-1">Tasks completed across the active workspace</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-background/75 p-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                  <Github className="h-3.5 w-3.5 text-primary" />
+                  Repo coverage
+                </div>
+                <p className="text-2xl font-semibold text-foreground">{repos.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Repositories currently visible to this account</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {statCards.map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-card border border-border rounded-2xl p-4">
+              className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-muted-foreground">{s.label}</span>
                 <s.icon className={`h-4 w-4 ${s.color}`} />
@@ -111,10 +163,10 @@ const DashboardPage = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
           {/* Tasks overview */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="bg-card border border-border rounded-2xl p-4">
+            className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] xl:col-span-4">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-foreground">Tasks</span>
               <button onClick={() => navigate("/workspace")} className="text-xs text-primary hover:underline">View all</button>
@@ -149,7 +201,7 @@ const DashboardPage = () => {
 
           {/* Workspace members */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-            className="bg-card border border-border rounded-2xl p-4">
+            className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] xl:col-span-4">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-foreground">Team</span>
               <span className="text-xs text-muted-foreground">{members.length} members</span>
@@ -177,7 +229,7 @@ const DashboardPage = () => {
 
           {/* GitHub recent commits */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="bg-card border border-border rounded-2xl p-4">
+            className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] xl:col-span-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg className="h-4 w-4 text-foreground" viewBox="0 0 16 16" fill="currentColor">
@@ -212,7 +264,7 @@ const DashboardPage = () => {
 
           {/* Channels */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-            className="bg-card border border-border rounded-2xl p-4">
+            className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] xl:col-span-3">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-foreground">Channels</span>
               <button onClick={() => navigate("/workspace")} className="text-xs text-primary hover:underline">Open</button>
@@ -232,7 +284,7 @@ const DashboardPage = () => {
 
           {/* Workspaces */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-            className="bg-card border border-border rounded-2xl p-4">
+            className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] xl:col-span-4">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-foreground">Workspaces</span>
               <button onClick={() => navigate("/workspace")} className="text-xs text-primary hover:underline">Manage</button>
@@ -262,7 +314,7 @@ const DashboardPage = () => {
 
           {/* GitHub repos */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-            className="bg-card border border-border rounded-2xl p-4">
+            className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] xl:col-span-3">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-foreground">Repositories</span>
               {githubUser && <span className="text-[10px] text-muted-foreground">@{githubUser}</span>}
@@ -287,6 +339,27 @@ const DashboardPage = () => {
                 {repos.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No repos found</p>}
               </div>
             )}
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+            className="bg-card/85 border border-border/70 rounded-2xl p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] xl:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-semibold text-foreground">Quick View</span>
+              <FolderKanban className="h-4 w-4 text-primary" />
+            </div>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Active Workspace</p>
+                <p className="mt-1 text-sm font-medium text-foreground truncate">{activeWorkspace?.name || "None selected"}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">In Progress</p>
+                <p className="mt-1 text-sm font-medium text-foreground">{inProgressTasks} task{inProgressTasks === 1 ? "" : "s"}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">GitHub</p>
+                <p className="mt-1 text-sm font-medium text-foreground">{githubUser ? `@${githubUser}` : "Not connected"}</p>
+              </div>
+            </div>
           </motion.div>
         </div>
       </div>

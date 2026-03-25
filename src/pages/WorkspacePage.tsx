@@ -334,6 +334,17 @@ const WorkspacePage = () => {
               )}
             </div>
             <div className="flex-1 overflow-y-auto py-3">
+              {!activeChannel && (
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
+                  <div className="h-16 w-16 rounded-[22px] border border-border/70 bg-background/80 flex items-center justify-center shadow-sm">
+                    <MessageSquare className="h-7 w-7 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-foreground">Choose a channel to start working</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">This workspace is set up for chat, tasks, GitHub issue linking, repo browsing, and project tracking.</p>
+                  </div>
+                </div>
+              )}
               {activeChannel && messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
                   <div className="h-14 w-14 rounded-[20px] gradient-primary flex items-center justify-center shadow-lg">
@@ -387,6 +398,10 @@ const WorkspacePage = () => {
                 {showEmoji && (
                   <EmojiPicker onSelect={(e) => setInput((p) => p + e)} onClose={() => setShowEmoji(false)} />
                 )}
+                <div className="flex items-center justify-between px-1 pb-2 text-[11px] text-muted-foreground">
+                  <span>Chat with your team and turn messages into tracked GitHub work.</span>
+                  <span>{input.length > 0 ? `${input.length} chars` : "Ready"}</span>
+                </div>
                 <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/35 p-2">
                   <button onClick={() => setShowEmoji(!showEmoji)} className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0">
                     <Smile className="h-5 w-5" />
