@@ -40,6 +40,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [groupNameError, setGroupNameError] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isGroupMode, setIsGroupMode] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -172,7 +173,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              placeholder="Group name..."
+              placeholder="Group name (required)..."
               className="w-full bg-sidebar-accent/50 text-xs text-sidebar-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
             />
           )}
@@ -216,17 +217,22 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
           {isGroupMode && selectedMembers.length > 0 && (
             <button
               onClick={() => {
-                if (groupName.trim()) {
-                  onCreateGroup(groupName, selectedMembers);
-                  setShowNewChat(false);
-                  setGroupName("");
-                  setSelectedMembers([]);
-                  setUserSearch("");
+                if (!groupName.trim()) {
+                  setGroupNameError(true);
+                  return;
                 }
+                setGroupNameError(false);
+                onCreateGroup(groupName, selectedMembers);
+                setShowNewChat(false);
+                setGroupName("");
+                setSelectedMembers([]);
+                setUserSearch("");
               }}
               className="w-full text-xs gradient-primary text-primary-foreground rounded-lg py-2 font-semibold"
             >
-              Create Group · {selectedMembers.length} member{selectedMembers.length > 1 ? "s" : ""}
+              {groupNameError
+                ? "⚠ Enter a group name first"
+                : `Create Group · ${selectedMembers.length} member${selectedMembers.length > 1 ? "s" : ""}`}
             </button>
           )}
         </div>
