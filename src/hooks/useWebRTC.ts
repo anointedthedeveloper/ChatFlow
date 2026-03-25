@@ -227,7 +227,7 @@ export function useWebRTC() {
       peerConnection.current = pc;
     }
     return pc;
-  }, [sendSignal, cleanup, onConnected, remoteStream]);
+  }, [sendSignal, cleanup, onConnected]);
 
   const getOrCreateCallRoom = useCallback(async (otherUserId: string): Promise<string | null> => {
     if (!user) return null;

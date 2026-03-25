@@ -46,7 +46,6 @@ const CallOverlay = ({
   // Sound effects on state transitions
   useEffect(() => {
     if (prevState === callState) return;
-    if (callState === "connected") Sounds.callAccept();
     if (callState === "idle" && prevState === "connected") Sounds.callEnd();
     if (callState === "idle" && prevState === "receiving") Sounds.callDecline();
     setPrevState(callState);
