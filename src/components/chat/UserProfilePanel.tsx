@@ -235,7 +235,7 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 z-20"
+            className="fixed inset-0 bg-black/40 z-20 sm:block"
             onClick={onClose}
           />
           <motion.div
@@ -243,7 +243,7 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
-            className="fixed right-0 top-0 h-full w-72 bg-card border-l border-border z-30 flex flex-col shadow-2xl"
+            className="fixed right-0 top-0 h-full w-full sm:w-80 bg-card border-l border-border z-30 flex flex-col shadow-2xl"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
               <span className="text-sm font-semibold text-foreground">{chat.is_group ? "Group Info" : "Profile"}</span>
@@ -258,15 +258,18 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
                 {chat.is_group ? (
                   <div className="relative group" onClick={() => isAdmin && iconRef.current?.click()} style={{ cursor: isAdmin ? "pointer" : "default" }}>
                     {groupIcon || (chat as any).icon_url ? (
-                      <img src={groupIcon || (chat as any).icon_url} alt="Group" className="h-20 w-20 rounded-full object-cover ring-2 ring-primary ring-offset-2 ring-offset-card" />
+                      <img src={groupIcon || (chat as any).icon_url} alt="Group" className="h-24 w-24 rounded-2xl object-cover ring-2 ring-primary ring-offset-2 ring-offset-card" />
                     ) : (
-                      <div className="h-20 w-20 rounded-full gradient-primary flex items-center justify-center text-2xl font-bold text-primary-foreground">
+                      <div className="h-24 w-24 rounded-2xl gradient-primary flex items-center justify-center text-3xl font-bold text-primary-foreground">
                         {chat.displayAvatar}
                       </div>
                     )}
                     {isAdmin && (
-                      <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        {uploadingIcon ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                      <div className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                        {uploadingIcon ? <Loader2 className="h-6 w-6 text-white animate-spin" /> : <>
+                          <Camera className="h-6 w-6 text-white" />
+                          <span className="text-[10px] text-white/80">Change photo</span>
+                        </>}
                       </div>
                     )}
                     <input ref={iconRef} type="file" className="hidden" accept="image/*" onChange={handleIconSelect} disabled={!isAdmin} />
@@ -294,16 +297,17 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
                       className="w-full bg-muted text-sm text-foreground rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary text-center"
                       autoFocus
                     />
-                    <input
+                    <textarea
                       value={groupDesc}
                       onChange={(e) => setGroupDesc(e.target.value)}
                       placeholder="Description (optional)"
-                      className="w-full bg-muted text-xs text-foreground rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary text-center"
+                      rows={2}
+                      className="w-full bg-muted text-xs text-foreground rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary resize-none"
                     />
                     <div className="flex gap-2">
-                      <button onClick={() => setEditingGroup(false)} className="flex-1 text-xs py-1.5 rounded-lg bg-muted text-muted-foreground">Cancel</button>
-                      <button onClick={saveGroupChanges} disabled={savingGroup} className="flex-1 text-xs py-1.5 rounded-lg gradient-primary text-primary-foreground font-medium">
-                        {savingGroup ? "Saving..." : "Save"}
+                      <button onClick={() => setEditingGroup(false)} className="flex-1 text-xs py-2 rounded-lg bg-muted text-muted-foreground">Cancel</button>
+                      <button onClick={saveGroupChanges} disabled={savingGroup} className="flex-1 text-xs py-2 rounded-lg gradient-primary text-primary-foreground font-medium">
+                        {savingGroup ? "Saving..." : "Save changes"}
                       </button>
                     </div>
                   </div>
@@ -312,13 +316,21 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
                     <div className="flex items-center gap-1.5 mt-3">
                       <h3 className="text-base font-semibold text-foreground">{chat.displayName}</h3>
                       {chat.is_group && isAdmin && (
-                        <button onClick={() => setEditingGroup(true)} className="text-muted-foreground hover:text-primary transition-colors">
+                        <button onClick={() => setEditingGroup(true)} className="text-muted-foreground hover:text-primary transition-colors" title="Edit group">
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>
                     {chat.is_group && (chat as any).description && (
                       <p className="text-xs text-muted-foreground mt-1 text-center px-2">{(chat as any).description}</p>
+                    )}
+                    {chat.is_group && isAdmin && !editingGroup && (
+                      <button
+                        onClick={() => setEditingGroup(true)}
+                        className="mt-2 flex items-center gap-1.5 text-xs text-primary hover:opacity-80 transition-opacity"
+                      >
+                        <Pencil className="h-3 w-3" />Edit group details
+                      </button>
                     )}
                     {!chat.is_group && profile?.username && (
                       <p className="text-xs text-muted-foreground mt-0.5">@{profile.username}</p>
