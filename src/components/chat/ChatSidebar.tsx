@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, MessageSquarePlus, Users, Settings, X, LogOut, Phone, Video, Mic, CheckCheck, Columns2, UserCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import AvatarBubble from "./AvatarBubble";
 import ThemeToggle from "./ThemeToggle";
-import ProfileSettings from "./ProfileSettings";
 import type { EnrichedChatRoom } from "@/hooks/useChat";
 
 interface ChatSidebarProps {
@@ -46,12 +46,12 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
   const [groupNameError, setGroupNameError] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isGroupMode, setIsGroupMode] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [searching, setSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<"chats" | "requests">("chats");
   const searchRef = useRef<HTMLDivElement>(null);
   const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   // Load users for new chat panel
   useEffect(() => {
@@ -111,7 +111,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-sidebar-border">
         <button
-          onClick={() => setShowProfile(true)}
+          onClick={() => navigate("/settings")}
           className="flex items-center gap-2.5 hover:opacity-90 transition-all hover-scale rounded-lg px-1 py-0.5"
         >
           <AvatarBubble
@@ -130,7 +130,7 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-            onClick={() => setShowProfile(true)}
+            onClick={() => navigate("/settings")}
             className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
           >
             <Settings className="h-4 w-4" />
@@ -419,7 +419,6 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
         </button>
       </div>
 
-      <ProfileSettings open={showProfile} onClose={() => setShowProfile(false)} />
     </div>
   );
 };
