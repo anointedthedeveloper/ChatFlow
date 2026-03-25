@@ -34,7 +34,10 @@ function createRingtone() {
     try {
       const key = localStorage.getItem("chatflow_ringtone") || "default";
       const freqs = RINGTONE_FREQS[key] || RINGTONE_FREQS.default;
-      const ctx = new AudioContext();
+      // Reuse a single AudioContext — create lazily, resume if suspended
+      let ctx: AudioContext;
+      try { ctx = new AudioContext(); } catch { return; }
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
       const gain = ctx.createGain();
       gain.gain.value = 0.25;
       gain.connect(ctx.destination);
@@ -144,7 +147,13 @@ export function useWebRTC() {
     pc.onicecandidate = (e) => {
       if (e.candidate) sendSignal({ type: "ice-candidate", to: targetUserId, data: e.candidate });
     };
-    pc.ontrack = (e) => setRemoteStream(e.streams[0]);
+    pc.ontrack = (e) => {
+      // Use the first stream, and update state whenever tracks change
+      const stream = e.streams[0];
+      setRemoteStream(stream);
+      // Also listen for future track replacements (screen share)
+      stream.onaddtrack = () => setRemoteStream(new MediaStream(stream.getTracks()));
+    };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") {
         ringtoneRef.current.stop();

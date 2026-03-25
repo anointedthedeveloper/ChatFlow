@@ -85,18 +85,37 @@ const CallOverlay = ({
     };
   }, [callState, callType]);
 
-  // ── Track remote video active ──────────────────────────────────────────────
+  // ── Track remote video active + handle track replacement (screen share) ──
   useEffect(() => {
     if (!remoteStream) { setRemoteVideoActive(false); return; }
+
+    const syncTrack = () => {
+      const vt = remoteStream.getVideoTracks()[0];
+      if (!vt) { setRemoteVideoActive(false); return; }
+      setRemoteVideoActive(vt.enabled && vt.readyState === "live");
+      // When the sender replaces their track (screen share), the stream fires addtrack
+      // Update the main video element to reflect the new track
+      if (mainVideoRef.current && !swapped && !isSharing) {
+        mainVideoRef.current.srcObject = remoteStream;
+      }
+    };
+
     const vt = remoteStream.getVideoTracks()[0];
-    if (!vt) { setRemoteVideoActive(false); return; }
-    setRemoteVideoActive(vt.enabled && vt.readyState === "live");
-    const onMute   = () => setRemoteVideoActive(false);
-    const onUnmute = () => setRemoteVideoActive(true);
-    vt.addEventListener("mute", onMute);
-    vt.addEventListener("unmute", onUnmute);
-    return () => { vt.removeEventListener("mute", onMute); vt.removeEventListener("unmute", onUnmute); };
-  }, [remoteStream]);
+    if (vt) {
+      setRemoteVideoActive(vt.enabled && vt.readyState === "live");
+      vt.addEventListener("mute",   () => setRemoteVideoActive(false));
+      vt.addEventListener("unmute", () => setRemoteVideoActive(true));
+    }
+
+    // addtrack fires when sender replaces track (screen share → camera or vice versa)
+    remoteStream.addEventListener("addtrack", syncTrack);
+    remoteStream.addEventListener("removetrack", syncTrack);
+
+    return () => {
+      remoteStream.removeEventListener("addtrack", syncTrack);
+      remoteStream.removeEventListener("removetrack", syncTrack);
+    };
+  }, [remoteStream, swapped, isSharing]);
 
   // ── Wire video elements ────────────────────────────────────────────────────
   // Main video: remote (default) or local (swapped) or screen share
@@ -222,20 +241,21 @@ const CallOverlay = ({
         </motion.div>
       )}
 
-      {/* Camera preview before accepting incoming video call */}
-      <AnimatePresence>
-        {callState === "receiving" && isVideo && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-            className="absolute bottom-44 right-4 z-20 w-28 h-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl bg-black"
-          >
-            <video ref={previewRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
-              <span className="text-[9px] text-white/70 bg-black/50 px-1.5 py-0.5 rounded-full">Preview</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Camera preview — always rendered, visibility controlled by opacity */}
+      {/* This prevents srcObject being lost on AnimatePresence unmount */}
+      <div
+        className={`absolute z-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl bg-black transition-all duration-300 ${
+          callState === "receiving" && isVideo
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+        style={{ bottom: 176, right: 16, width: 112, height: 80 }}
+      >
+        <video ref={previewRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+        <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
+          <span className="text-[9px] text-white/70 bg-black/50 px-1.5 py-0.5 rounded-full">You</span>
+        </div>
+      </div>
 
       {/* Audio element for remote — always present */}
       <audio ref={remoteAudioRef} autoPlay />
