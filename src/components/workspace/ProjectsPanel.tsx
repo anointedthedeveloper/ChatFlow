@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { X, Plus, FolderKanban, Rocket, PauseCircle, Compass, CheckCircle2, Link2, Download, FileText } from "lucide-react";
+import { X, Plus, FolderKanban, Rocket, PauseCircle, Compass, CheckCircle2, Link2, Download, FileText, Lightbulb, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { WorkspaceProject, WorkspaceProjectFile } from "@/hooks/useWorkspace";
 
@@ -57,7 +57,21 @@ const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, o
         Link a repo from the GitHub panel or choose one inside each project card.
       </div>
 
+      <div className="mx-3 mt-3 rounded-2xl border border-primary/15 bg-primary/5 p-3">
+        <div className="flex items-start gap-2">
+          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-foreground">How this works</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">1. Make a project. 2. Link a repo. 3. Open repo files and import the ones you want.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="p-3 border-b border-border bg-muted/20 space-y-2">
+        <div className="rounded-xl border border-dashed border-border/70 bg-background/70 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Step 1</p>
+          <p className="mt-1 text-xs text-foreground">Create a project</p>
+        </div>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -124,36 +138,50 @@ const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, o
                 </div>
                 <div className="space-y-2">
                   {!project.linked_repo_full_name && repoPickerProjectId !== project.id && (
-                    <button
-                      onClick={() => setRepoPickerProjectId(project.id)}
-                      className="w-full flex items-center justify-between rounded-xl border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-[11px] text-primary hover:bg-primary/10 transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Link2 className="h-3.5 w-3.5" />
-                        Link repo to project
-                      </span>
-                      <span className="text-[10px] opacity-70">Choose repo</span>
-                    </button>
+                    <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">Step 2</p>
+                          <p className="mt-1 text-xs font-medium text-primary">Link a repo to this project</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">This connects your GitHub repo to <span className="font-medium text-foreground">{project.name}</span>.</p>
+                        </div>
+                        <button
+                          onClick={() => setRepoPickerProjectId(project.id)}
+                          className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[11px] font-medium text-white transition-opacity hover:opacity-90"
+                        >
+                          Choose repo
+                        </button>
+                      </div>
+                    </div>
                   )}
                   {(project.linked_repo_full_name || repoPickerProjectId === project.id) && (
-                    <select
-                      value={project.linked_repo_full_name || ""}
-                      onChange={(e) => {
-                        onUpdateRepo(project.id, e.target.value || null);
-                        setRepoPickerProjectId(null);
-                      }}
-                      className="w-full bg-muted text-[11px] text-foreground rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">
-                        {linkedRepos.length > 0 ? "No linked repo" : "Link a workspace repo first"}
-                      </option>
-                      {linkedRepos.map((repo) => (
-                        <option key={`${project.id}-${repo}`} value={repo}>{repo}</option>
-                      ))}
-                    </select>
+                    <div className="rounded-xl border border-border bg-muted/30 p-3">
+                      <div className="mb-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        Pick one repo for this project
+                      </div>
+                      <select
+                        value={project.linked_repo_full_name || ""}
+                        onChange={(e) => {
+                          onUpdateRepo(project.id, e.target.value || null);
+                          setRepoPickerProjectId(null);
+                        }}
+                        className="w-full bg-muted text-[11px] text-foreground rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="">
+                          {linkedRepos.length > 0 ? "No linked repo" : "Link a workspace repo first"}
+                        </option>
+                        {linkedRepos.map((repo) => (
+                          <option key={`${project.id}-${repo}`} value={repo}>{repo}</option>
+                        ))}
+                      </select>
+                    </div>
                   )}
                   {!project.linked_repo_full_name && linkedRepos.length === 0 && (
-                    <p className="text-[10px] text-muted-foreground">Open the GitHub panel and link a workspace repo first.</p>
+                    <div className="rounded-xl border border-dashed border-border bg-background/70 px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Need this first</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Open the GitHub panel, then press <span className="font-medium text-foreground">Link</span> on a repo.</p>
+                    </div>
                   )}
                   {!!filesByProject[project.id]?.length && (
                     <div className="rounded-xl border border-border bg-muted/30 p-2">

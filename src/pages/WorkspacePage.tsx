@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Hash, Send, Smile, X, Users, UserPlus, MessageSquare, Github, LayoutDashboard, Link2, Menu, Settings, MessageCircleOff, MessageCircle } from "lucide-react";
+import { Hash, Send, Smile, X, Users, UserPlus, MessageSquare, Github, LayoutDashboard, Link2, Menu, Settings, MessageCircleOff, MessageCircle, WandSparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,6 +90,7 @@ const WorkspacePage = () => {
   const [githubIssueBody, setGithubIssueBody] = useState("");
   const [selectedLinkedRepoId, setSelectedLinkedRepoId] = useState("");
   const [creatingGithubIssue, setCreatingGithubIssue] = useState(false);
+  const [showGuide, setShowGuide] = useState(() => localStorage.getItem("chatflow_workspace_guide_closed") !== "true");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-select first workspace
@@ -311,6 +312,11 @@ const WorkspacePage = () => {
     if (ch) { setShowCreateCh(false); setChName(""); setActiveChannel(ch); }
   }, [activeWorkspace, chName, createChannel]);
 
+  const dismissGuide = useCallback(() => {
+    setShowGuide(false);
+    localStorage.setItem("chatflow_workspace_guide_closed", "true");
+  }, []);
+
   return (
     <div className="h-screen flex overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.08),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
       <AnimatePresence>
@@ -352,6 +358,46 @@ const WorkspacePage = () => {
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 p-3 lg:p-4 gap-3">
+        {showGuide && (
+          <div className="rounded-[28px] border border-primary/15 bg-primary/5 px-4 py-4 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-sm">
+                  <WandSparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Start here</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">This workspace now explains itself a bit more. Follow these simple steps.</p>
+                  <div className="mt-3 grid gap-2 md:grid-cols-3">
+                    <div className="rounded-2xl border border-border/70 bg-background/80 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Step 1</p>
+                      <p className="mt-1 text-sm font-medium text-foreground">Open GitHub</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Use the GitHub button at the bottom right and link a repo.</p>
+                    </div>
+                    <div className="rounded-2xl border border-border/70 bg-background/80 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Step 2</p>
+                      <p className="mt-1 text-sm font-medium text-foreground">Open Projects</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Make a project, then choose the repo for it.</p>
+                    </div>
+                    <div className="rounded-2xl border border-border/70 bg-background/80 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Step 3</p>
+                      <p className="mt-1 text-sm font-medium text-foreground">Open Files</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Browse repo files, edit them, or import a file into a project.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={dismissGuide}
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title="Hide guide"
+              >
+                <X className="mx-auto h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Channel header */}
         {activeChannel ? (
           <div className="px-4 py-3 rounded-2xl border border-border/70 bg-card/85 backdrop-blur-sm flex items-center gap-3 shrink-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">

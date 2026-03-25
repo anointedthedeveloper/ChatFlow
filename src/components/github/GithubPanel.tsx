@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Star, GitFork, GitCommit, AlertCircle, RefreshCw, ExternalLink, ChevronRight, Circle, GitPullRequest, Plus, GitBranch, Search, FolderOpen, WifiOff, Link2, Check, Sparkles } from "lucide-react";
+import { X, Star, GitFork, GitCommit, AlertCircle, RefreshCw, ExternalLink, ChevronRight, Circle, GitPullRequest, Plus, GitBranch, Search, FolderOpen, WifiOff, Link2, Check, Sparkles, Lightbulb } from "lucide-react";
 import { useGithub } from "@/hooks/useGithub";
 import type { GithubRepo, GithubCommit, GithubIssue } from "@/hooks/useGithub";
 import type { WorkspaceProject } from "@/hooks/useWorkspace";
@@ -293,6 +293,17 @@ const GithubPanel = ({
       {/* Connected — repo list */}
       {(token || githubUser) && !selectedRepo && (
         <div className="flex-1 flex flex-col overflow-hidden">
+          {workspaceId && (
+            <div className="mx-3 mt-3 rounded-2xl border border-primary/15 bg-primary/5 p-3 shrink-0">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Quick guide</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">1. Press <span className="font-medium text-foreground">Link</span> on a repo. 2. Open <span className="font-medium text-foreground">Projects</span>. 3. Pick that repo for your project.</p>
+                </div>
+              </div>
+            </div>
+          )}
           {showCreateRepo && (
             <div className="mx-3 mt-3 rounded-2xl border border-border bg-muted/20 p-3 space-y-2 shrink-0">
               <div className="flex items-center gap-2">
@@ -440,7 +451,7 @@ const GithubPanel = ({
           )}
           {projects.length > 0 && onLinkRepoToProject && (
             <div className="px-4 pb-2 text-[11px] text-muted-foreground">
-              Tip: select a project here to link this repository directly to it.
+              Tip: pick a project here, then press <span className="font-medium text-foreground">Link</span>.
             </div>
           )}
 
