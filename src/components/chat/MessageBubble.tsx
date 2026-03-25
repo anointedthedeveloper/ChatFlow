@@ -169,7 +169,10 @@ const MessageBubble = ({ message, isMine, onReply, showDate }: MessageBubbleProp
             {isCall && (
               <>
                 {message.fileType === "call/video" ? <Video className="h-4 w-4 shrink-0" /> : <Phone className="h-4 w-4 shrink-0" />}
-                <span className="text-sm font-medium">{message.text}</span>
+                <span className="text-sm font-medium">
+                  {/* Strip legacy emoji prefix from old messages */}
+                  {message.text.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}]\s*/u, "")}
+                </span>
               </>
             )}
 
