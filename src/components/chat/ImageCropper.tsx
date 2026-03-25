@@ -55,24 +55,37 @@ const ImageCropper = ({ src, onCrop, onCancel, size = 400 }: ImageCropperProps) 
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, CANVAS, CANVAS);
 
-    // Draw image
     const iw = imgNaturalSize.w * scale;
     const ih = imgNaturalSize.h * scale;
     const ix = CANVAS / 2 - iw / 2 + offset.x;
     const iy = CANVAS / 2 - ih / 2 + offset.y;
-    ctx.drawImage(img, ix, iy, iw, ih);
 
-    // Dim outside square crop area
-    const pad = 4;
-    ctx.save();
+    // 1. Draw dim overlay
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, 0, CANVAS, CANVAS);
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillRect(pad, pad, CANVAS - pad * 2, CANVAS - pad * 2);
+
+    // 2. Draw bright image only inside the crop square
+    const pad = 4;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad, pad, CANVAS - pad * 2, CANVAS - pad * 2);
+    ctx.clip();
+    ctx.drawImage(img, ix, iy, iw, ih);
     ctx.restore();
 
-    // Square border
-    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    // 3. Draw dim image outside crop square (for context)
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    // clip to outside region by drawing full then subtracting — use even-odd rule
+    ctx.beginPath();
+    ctx.rect(0, 0, CANVAS, CANVAS);
+    ctx.rect(pad, pad, CANVAS - pad * 2, CANVAS - pad * 2);
+    ctx.clip("evenodd");
+    ctx.drawImage(img, ix, iy, iw, ih);
+    ctx.restore();
+
+    // 4. Crop border
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
     ctx.lineWidth = 2;
     ctx.strokeRect(pad, pad, CANVAS - pad * 2, CANVAS - pad * 2);
   }, [scale, offset, imgNaturalSize]);

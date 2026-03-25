@@ -27,6 +27,7 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
   const [ringtone, setRingtone] = useState("default");
   const [ghostMode, setGhostMode] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
 
   const RINGTONES = [
     { id: "default", label: "Default", freqs: [[880, 0, 0.15], [1100, 0.2, 0.15], [880, 0.4, 0.15]] },
@@ -54,10 +55,28 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
       setBio((profile as any).bio || "");
       setAvatarUrl(profile.avatar_url || "");
       setMessage("");
+      setUsernameStatus("idle");
       setRingtone(localStorage.getItem("chatflow_ringtone") || "default");
       setGhostMode(localStorage.getItem("chatflow_ghost_mode") === "true");
     }
   }, [open, profile]);
+
+  // Debounced username availability check
+  useEffect(() => {
+    const trimmed = username.trim();
+    if (!trimmed || trimmed === profile?.username) { setUsernameStatus("idle"); return; }
+    setUsernameStatus("checking");
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", trimmed)
+        .neq("id", user?.id || "")
+        .maybeSingle();
+      setUsernameStatus(data ? "taken" : "available");
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [username, profile?.username, user?.id]);
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -169,9 +188,22 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Username</label>
-                  <input value={username} onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-muted text-sm text-foreground placeholder:text-muted-foreground rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary transition-all"
-                    placeholder="username" />
+                  <div className="relative">
+                    <input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ""))}
+                      className={`w-full bg-muted text-sm text-foreground placeholder:text-muted-foreground rounded-xl px-3 py-2.5 outline-none focus:ring-2 transition-all pr-8 ${
+                        usernameStatus === "taken" ? "focus:ring-destructive ring-1 ring-destructive/50" :
+                        usernameStatus === "available" ? "focus:ring-green-500 ring-1 ring-green-500/50" :
+                        "focus:ring-primary"
+                      }`}
+                      placeholder="username" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs">
+                      {usernameStatus === "checking" && <span className="text-muted-foreground">…</span>}
+                      {usernameStatus === "available" && <span className="text-green-500">✓</span>}
+                      {usernameStatus === "taken" && <span className="text-destructive">✗</span>}
+                    </span>
+                  </div>
+                  {usernameStatus === "taken" && <p className="text-[11px] text-destructive mt-1">Username already taken</p>}
+                  {usernameStatus === "available" && <p className="text-[11px] text-green-500 mt-1">Username available</p>}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Bio</label>
@@ -282,7 +314,7 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                 </p>
               )}
 
-              <button onClick={handleSave} disabled={saving || uploading || !username.trim()}
+              <button onClick={handleSave} disabled={saving || uploading || !username.trim() || usernameStatus === "taken" || usernameStatus === "checking"}
                 className="w-full gradient-primary text-primary-foreground rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50 transition-opacity">
                 {saving ? "Saving..." : "Save Changes"}
               </button>
