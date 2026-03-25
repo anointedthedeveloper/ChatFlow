@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply, Pencil } from "lucide-react";
+import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply, Pencil, Search, Pin, PinOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
@@ -28,12 +28,18 @@ interface Message {
   reply_to_sender?: string | null;
 }
 
+interface Reaction { emoji: string; count: number; mine: boolean; }
+
 interface ChatPanelProps {
   chat: EnrichedChatRoom;
   messages: Message[];
+  reactions?: Array<{ id: string; message_id: string; user_id: string; emoji: string }>;
   onSendMessage: (text: string, fileUrl?: string, fileType?: string, fileName?: string, replyToId?: string, replyToText?: string, replyToSender?: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
+  onReact?: (msgId: string, emoji: string) => void;
+  onPin?: (msgId: string, text: string) => void;
+  onUnpin?: () => void;
   onAcceptRequest?: () => void;
   onDeclineRequest?: () => void;
   onStartCall: (type: "audio" | "video") => void;
@@ -58,7 +64,10 @@ interface EditState {
   text: string;
 }
 
-const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessage, onAcceptRequest, onDeclineRequest, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, onCloseChat, profileOpen, isSecondPanel, onToggleSecondProfile }: ChatPanelProps) => {
+const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessage, onDeleteMessage, onReact, onPin, onUnpin, onAcceptRequest, onDeclineRequest, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, onCloseChat, profileOpen, isSecondPanel, onToggleSecondProfile }: ChatPanelProps) => {
+  const { user } = useAuth();
+  const { wallpaper } = useThemeContext();
+
   const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -69,9 +78,10 @@ const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessa
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
-  const [cropFile, setCropFile] = useState<File | null>(null); // original file for non-image types
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const { wallpaper } = useThemeContext();
   const prevMsgCount = useRef(messages.length);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +253,23 @@ const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessa
 
   const hasInput = input.trim() || selectedFile;
 
+  // Reactions grouped by message id
+  const reactionsByMsg = reactions.reduce<Record<string, Reaction[]>>((acc, r) => {
+    if (!acc[r.message_id]) acc[r.message_id] = [];
+    const existing = acc[r.message_id].find(x => x.emoji === r.emoji);
+    if (existing) { existing.count++; if (r.user_id === user?.id) existing.mine = true; }
+    else acc[r.message_id].push({ emoji: r.emoji, count: 1, mine: r.user_id === user?.id });
+    return acc;
+  }, {});
+
+  // Filtered messages for search
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    : messages;
+
+  // Pinned message text from chat room
+  const pinnedText = (chat as any).pinned_message_text as string | undefined;
+
   return (
     <div
       className={`h-full flex flex-col bg-background min-w-0 ${wallpaper ? "chat-wallpaper" : ""}`}
@@ -251,6 +278,20 @@ const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessa
       {cropSrc && (
         <ImageCropper src={cropSrc} onCrop={handleCroppedImage} onCancel={() => { setCropSrc(null); setCropFile(null); }} />
       )}
+
+      {/* Pinned message banner */}
+      {pinnedText && (
+        <div className="px-4 py-2 bg-primary/5 border-b border-border flex items-center gap-2 shrink-0">
+          <Pin className="h-3.5 w-3.5 text-primary shrink-0" />
+          <p className="text-xs text-foreground truncate flex-1">{pinnedText}</p>
+          {onUnpin && (
+            <button onClick={onUnpin} className="text-muted-foreground hover:text-foreground shrink-0">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-3 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -301,6 +342,11 @@ const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessa
                 <Video className="h-4 w-4" />
               </motion.button>
               <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                onClick={() => { setSearchOpen(o => !o); setSearchQuery(""); }}
+                className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors ${searchOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
+                <Search className="h-4 w-4" />
+              </motion.button>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                 onClick={onToggleProfile} className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors ${profileOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}>
                 <Info className="h-4 w-4" />
               </motion.button>
@@ -314,6 +360,27 @@ const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessa
           )}
         </div>
       </div>
+
+      {/* Search bar */}
+      <AnimatePresence>
+        {searchOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="px-3 py-2 border-b border-border bg-card/80 shrink-0"
+          >
+            <input
+              autoFocus
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => e.key === "Escape" && setSearchOpen(false)}
+              placeholder="Search messages..."
+              className="w-full bg-muted text-sm text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Message Request Banner */}
       {chat.isPending && !chat.isRequester && (
@@ -346,8 +413,8 @@ const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessa
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-3">
         <AnimatePresence initial={false}>
-          {messages.map((msg, i) => {
-            const prev = messages[i - 1];
+          {filteredMessages.map((msg, i) => {
+            const prev = filteredMessages[i - 1];
             const msgDate = new Date(msg.created_at);
             const prevDate = prev ? new Date(prev.created_at) : null;
             const showDate = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
@@ -368,9 +435,12 @@ const ChatPanel = ({ chat, messages, onSendMessage, onEditMessage, onDeleteMessa
                   replyTo: msg.reply_to_text ? { text: msg.reply_to_text, senderName: msg.reply_to_sender || "Unknown" } : null,
                 }}
                 isMine={msg.sender_id === user?.id}
+                reactions={reactionsByMsg[msg.id] ?? []}
                 onReply={() => handleReply({ id: msg.id, text: msg.content, sender_id: msg.sender_id })}
                 onEdit={() => handleEdit({ id: msg.id, text: msg.content })}
                 onDelete={() => onDeleteMessage?.(msg.id)}
+                onReact={onReact ? (emoji) => onReact(msg.id, emoji) : undefined}
+                onPin={onPin ? () => onPin(msg.id, msg.content) : undefined}
               />
             );
           })}

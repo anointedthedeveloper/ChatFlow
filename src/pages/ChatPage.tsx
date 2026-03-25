@@ -20,10 +20,11 @@ const ChatPage = () => {
 
   const {
     chatRooms, activeChat, activeChatId, setActiveChatId,
-    messages, sendMessage, createDirectMessage, createGroupChat,
+    messages, reactions, sendMessage, createDirectMessage, createGroupChat,
     acceptRequest, declineRequest,
     removeMember, leaveGroup, promoteToAdmin, demoteAdmin,
     editMessage, deleteMessage, sendSystemMessage,
+    toggleReaction, pinMessage, unpinMessage,
     isOtherTyping, sendTyping, fetchChatRooms,
   } = useChat();
 
@@ -147,10 +148,14 @@ const ChatPage = () => {
             <ChatPanel
               chat={activeChat}
               messages={messages}
+              reactions={reactions}
               onSendMessage={(text, fileUrl, fileType, fileName, replyToId, replyToText, replyToSender) =>
                 sendMessage(text, fileUrl, fileType, fileName, replyToId, replyToText, replyToSender)}
               onEditMessage={editMessage}
               onDeleteMessage={deleteMessage}
+              onReact={(msgId, emoji) => toggleReaction(msgId, emoji)}
+              onPin={(msgId, text) => pinMessage(activeChat.id, msgId, text)}
+              onUnpin={() => unpinMessage(activeChat.id)}
               onAcceptRequest={() => acceptRequest(activeChat.id)}
               onDeclineRequest={() => { declineRequest(activeChat.id); setActiveChatId(null); }}
               onStartCall={handleStartCall}

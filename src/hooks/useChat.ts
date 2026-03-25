@@ -39,6 +39,13 @@ interface Message {
   reply_to_sender?: string | null;
 }
 
+interface Reaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+}
+
 export interface EnrichedChatRoom extends ChatRoom {
   members: ChatMember[];
   messages: Message[];
@@ -58,6 +65,7 @@ export function useChat() {
   const [chatRooms, setChatRooms] = useState<EnrichedChatRoom[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -163,6 +171,7 @@ export function useChat() {
   const fetchMessages = useCallback(async () => {
     if (!activeChatId) {
       setMessages([]);
+      setReactions([]);
       return;
     }
 
@@ -173,6 +182,15 @@ export function useChat() {
       .order("created_at", { ascending: true });
 
     setMessages(data || []);
+
+    // Fetch reactions for these messages
+    if (data?.length) {
+      const msgIds = data.map((m) => m.id);
+      const { data: rxData } = await supabase.from("reactions").select("*").in("message_id", msgIds);
+      setReactions(rxData || []);
+    } else {
+      setReactions([]);
+    }
 
     // Mark unread as read
     if (user) {
@@ -348,6 +366,28 @@ export function useChat() {
     [sendSystemMessage, fetchChatRooms]
   );
 
+  const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
+    if (!user) return;
+    const existing = reactions.find((r) => r.message_id === messageId && r.user_id === user.id && r.emoji === emoji);
+    if (existing) {
+      await supabase.from("reactions").delete().eq("id", existing.id);
+      setReactions((prev) => prev.filter((r) => r.id !== existing.id));
+    } else {
+      const { data } = await supabase.from("reactions").insert({ message_id: messageId, user_id: user.id, emoji }).select().single();
+      if (data) setReactions((prev) => [...prev, data as Reaction]);
+    }
+  }, [user, reactions]);
+
+  const pinMessage = useCallback(async (chatRoomId: string, messageId: string, text: string) => {
+    await supabase.from("chat_rooms").update({ pinned_message_id: messageId, pinned_message_text: text } as any).eq("id", chatRoomId);
+    await fetchChatRooms();
+  }, [fetchChatRooms]);
+
+  const unpinMessage = useCallback(async (chatRoomId: string) => {
+    await supabase.from("chat_rooms").update({ pinned_message_id: null, pinned_message_text: null } as any).eq("id", chatRoomId);
+    await fetchChatRooms();
+  }, [fetchChatRooms]);
+
   const editMessage = useCallback(
     async (messageId: string, newText: string) => {
       await supabase.from("messages").update({ content: newText } as any).eq("id", messageId);
@@ -480,6 +520,16 @@ export function useChat() {
       )
       .on(
         "postgres_changes",
+        { event: "INSERT", schema: "public", table: "reactions" },
+        (payload) => { setReactions((prev) => prev.some((r) => r.id === (payload.new as Reaction).id) ? prev : [...prev, payload.new as Reaction]); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "reactions" },
+        (payload) => { setReactions((prev) => prev.filter((r) => r.id !== (payload.old as any).id)); }
+      )
+      .on(
+        "postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages" },
         (payload) => {
           const updated = payload.new as Message;
@@ -492,26 +542,12 @@ export function useChat() {
   }, [user, activeChatId, fetchChatRooms, fetchMessages]);
 
   return {
-    chatRooms,
-    activeChat,
-    activeChatId,
-    setActiveChatId,
-    messages,
-    sendMessage,
-    createDirectMessage,
-    acceptRequest,
-    declineRequest,
-    createGroupChat,
-    removeMember,
-    leaveGroup,
-    promoteToAdmin,
-    demoteAdmin,
-    editMessage,
-    deleteMessage,
-    sendSystemMessage,
-    loading,
-    fetchChatRooms,
-    isOtherTyping,
-    sendTyping,
+    chatRooms, activeChat, activeChatId, setActiveChatId,
+    messages, reactions, sendMessage,
+    createDirectMessage, acceptRequest, declineRequest, createGroupChat,
+    removeMember, leaveGroup, promoteToAdmin, demoteAdmin,
+    editMessage, deleteMessage, sendSystemMessage,
+    toggleReaction, pinMessage, unpinMessage,
+    loading, fetchChatRooms, isOtherTyping, sendTyping,
   };
 }
