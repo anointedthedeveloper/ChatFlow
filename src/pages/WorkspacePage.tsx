@@ -31,6 +31,16 @@ interface Message {
   reply_to_sender?: string | null;
 }
 
+interface ChannelReaction {
+  id: string;
+  workspace_id: string;
+  channel_id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+}
+
 const WorkspacePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -51,6 +61,7 @@ const WorkspacePage = () => {
 
   const [activeChannel, setActiveChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [reactions, setReactions] = useState<ChannelReaction[]>([]);
   const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
@@ -106,20 +117,44 @@ const WorkspacePage = () => {
 
   // Fetch messages for active channel
   useEffect(() => {
-    if (!activeChannel) { setMessages([]); return; }
+    if (!activeChannel) { setMessages([]); setReactions([]); return; }
     supabase.from("channel_messages").select("*")
       .eq("channel_id", activeChannel.id)
       .order("created_at", { ascending: true })
       .then(({ data }) => setMessages((data as Message[]) || []));
 
+    supabase.from("channel_message_reactions").select("*")
+      .eq("channel_id", activeChannel.id)
+      .then(({ data }) => setReactions((data as ChannelReaction[]) || []));
+
     const ch = supabase.channel(`ch-msgs-${activeChannel.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "channel_messages", filter: `channel_id=eq.${activeChannel.id}` },
         (payload) => setMessages((prev) => prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new as Message]))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "channel_message_reactions", filter: `channel_id=eq.${activeChannel.id}` },
+        (payload) => setReactions((prev) => prev.some((reaction) => reaction.id === payload.new.id) ? prev : [...prev, payload.new as ChannelReaction]))
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "channel_message_reactions", filter: `channel_id=eq.${activeChannel.id}` },
+        (payload) => setReactions((prev) => prev.filter((reaction) => reaction.id !== payload.old.id)))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [activeChannel]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const reactionsByMsg = reactions.reduce<Record<string, Array<{ emoji: string; count: number; mine: boolean }>>>((acc, reaction) => {
+    if (!acc[reaction.message_id]) acc[reaction.message_id] = [];
+    const existing = acc[reaction.message_id].find((entry) => entry.emoji === reaction.emoji);
+    if (existing) {
+      existing.count += 1;
+      if (reaction.user_id === user?.id) existing.mine = true;
+    } else {
+      acc[reaction.message_id].push({
+        emoji: reaction.emoji,
+        count: 1,
+        mine: reaction.user_id === user?.id,
+      });
+    }
+    return acc;
+  }, {});
 
   const sendMessage = useCallback(async () => {
     if (!user || !activeChannel || !input.trim()) return;
@@ -132,6 +167,38 @@ const WorkspacePage = () => {
       content,
     } as never);
   }, [user, activeChannel, activeWorkspace, input]);
+
+  const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
+    if (!user || !activeWorkspace || !activeChannel) return;
+
+    const existing = reactions.find((reaction) =>
+      reaction.message_id === messageId &&
+      reaction.user_id === user.id &&
+      reaction.emoji === emoji
+    );
+
+    if (existing) {
+      const { error } = await supabase
+        .from("channel_message_reactions")
+        .delete()
+        .eq("id", existing.id);
+
+      if (error) toast.error("Could not remove reaction");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("channel_message_reactions")
+      .insert({
+        workspace_id: activeWorkspace.id,
+        channel_id: activeChannel.id,
+        message_id: messageId,
+        user_id: user.id,
+        emoji,
+      } as never);
+
+    if (error) toast.error("Could not add reaction");
+  }, [activeChannel, activeWorkspace, reactions, user]);
 
   const handleConvertToTask = useCallback((msgId: string, content: string) => {
     setTaskFromMsg({ id: msgId, content });
@@ -393,6 +460,7 @@ const WorkspacePage = () => {
                       fileType: msg.file_type || undefined,
                       fileName: msg.file_name || undefined,
                       replyTo: msg.reply_to_text ? { text: msg.reply_to_text, senderName: msg.reply_to_sender || "Unknown" } : null,
+                      reactions: reactionsByMsg[msg.id] ?? [],
                       githubIssueLink: issueLink ? {
                         number: issueLink.external_number,
                         title: issueLink.external_title,
@@ -401,7 +469,7 @@ const WorkspacePage = () => {
                       } : null,
                     }}
                     isMine={msg.sender_id === user?.id}
-                    reactions={[]}
+                    onReact={(emoji) => toggleReaction(msg.id, emoji)}
                     onForward={() => handleConvertToTask(msg.id, msg.content)}
                     onGithubIssue={() => handleOpenGithubIssue({ id: msg.id, text: msg.content })}
                     onReply={() => {}}

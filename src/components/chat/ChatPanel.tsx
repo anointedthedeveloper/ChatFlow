@@ -552,9 +552,9 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
                   fileType: msg.file_type || undefined,
                   fileName: msg.file_name || undefined,
                   replyTo: msg.reply_to_text ? { text: msg.reply_to_text, senderName: msg.reply_to_sender || "Unknown" } : null,
+                  reactions: reactionsByMsg[msg.id] ?? [],
                 }}
                 isMine={msg.sender_id === user?.id}
-                reactions={reactionsByMsg[msg.id] ?? []}
                 onReply={() => handleReply({ id: msg.id, text: msg.content, sender_id: msg.sender_id })}
                 onEdit={() => handleEdit({ id: msg.id, text: msg.content })}
                 onDelete={() => onDeleteMessage?.(msg.id)}
