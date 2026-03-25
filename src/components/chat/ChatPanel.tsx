@@ -48,6 +48,7 @@ interface ChatPanelProps {
   onStartCall: (type: "audio" | "video") => void;
   onTyping?: () => void;
   isOtherTyping?: boolean;
+  typingUsers?: string[];
   onToggleSidebar?: () => void;
   onToggleProfile?: () => void;
   onCloseChat?: () => void;
@@ -68,7 +69,7 @@ interface EditState {
   text: string;
 }
 
-const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessage, onDeleteMessage, onReact, onPin, onUnpin, onForward, onClearChat, onAcceptRequest, onDeclineRequest, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, onCloseChat, profileOpen, isSecondPanel, onToggleSecondProfile, allChats = [] }: ChatPanelProps) => {
+const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessage, onDeleteMessage, onReact, onPin, onUnpin, onForward, onClearChat, onAcceptRequest, onDeclineRequest, onStartCall, onTyping, isOtherTyping, typingUsers = [], onToggleSidebar, onToggleProfile, onCloseChat, profileOpen, isSecondPanel, onToggleSecondProfile, allChats = [] }: ChatPanelProps) => {
   const { user } = useAuth();
   const { wallpaper } = useThemeContext();
 
@@ -552,7 +553,7 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
             );
           })}
         </AnimatePresence>
-        {isOtherTyping && <TypingIndicator />}
+        {isOtherTyping && <TypingIndicator users={typingUsers} />}
         <div ref={messagesEndRef} />
       </div>
 

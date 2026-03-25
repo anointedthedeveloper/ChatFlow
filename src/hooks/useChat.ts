@@ -731,22 +731,28 @@ export function useChat() {
             // Mark as delivered — fire and forget, ignore if column missing
             supabase.from("messages").update({ is_delivered: true } as any).eq("id", newMsg.id).then(() => {}).catch(() => {});
           }
-          if (newMsg.sender_id !== user.id && document.hidden) {
-            // Check mute
+          if (newMsg.sender_id !== user.id) {
             const muteUntil = localStorage.getItem(`chatflow_mute_${newMsg.chat_room_id}`);
             const isMuted = muteUntil && new Date(muteUntil) > new Date();
-            // Push notification when app is in background
             if (!isMuted && Notification.permission === "granted" && !newMsg.file_type?.startsWith("call/")) {
-              const { data: sender } = await supabase
-                .from("profiles")
-                .select("display_name, username")
-                .eq("id", newMsg.sender_id)
-                .single();
-              const name = sender?.display_name || sender?.username || "Someone";
-              new Notification(`New message from ${name}`, {
-                body: newMsg.content,
-                icon: "/favicon.ico",
-              });
+              // Check for @mention — notify even if app is in foreground
+              const currentUsername = user ? (await supabase.from("profiles").select("username, display_name").eq("id", user.id).single()).data : null;
+              const myUsername = currentUsername?.username || "";
+              const isMention = myUsername && newMsg.content.toLowerCase().includes(`@${myUsername.toLowerCase()}`);
+              if (isMention || document.hidden) {
+                const { data: sender } = await supabase
+                  .from("profiles")
+                  .select("display_name, username")
+                  .eq("id", newMsg.sender_id)
+                  .single();
+                const name = sender?.display_name || sender?.username || "Someone";
+                const title = isMention ? `${name} mentioned you` : `New message from ${name}`;
+                new Notification(title, {
+                  body: newMsg.content,
+                  icon: "/favicon.ico",
+                  tag: isMention ? `mention-${newMsg.id}` : undefined,
+                });
+              }
             }
           }
           fetchChatRooms();

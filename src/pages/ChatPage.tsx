@@ -26,7 +26,7 @@ const ChatPage = () => {
     removeMember, leaveGroup, promoteToAdmin, demoteAdmin,
     editMessage, deleteMessage, sendSystemMessage,
     toggleReaction, pinMessage, unpinMessage,
-    isOtherTyping, sendTyping, fetchChatRooms,
+    isOtherTyping, typingUsers, sendTyping, fetchChatRooms,
     clearChat, archiveChat, forwardMessage,
   } = useChat();
 
@@ -175,6 +175,7 @@ const ChatPage = () => {
               onStartCall={handleStartCall}
               onTyping={sendTyping}
               isOtherTyping={isOtherTyping}
+              typingUsers={typingUsers}
               onToggleSidebar={() => setSidebarOpen(true)}
               onToggleProfile={() => setProfileOpen((p) => !p)}
               onCloseChat={() => { setActiveChatId(null); setProfileOpen(false); }}

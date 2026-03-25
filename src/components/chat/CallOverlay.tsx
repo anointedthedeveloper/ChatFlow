@@ -52,6 +52,12 @@ const CallOverlay = ({
 
   const [swapped,   setSwapped]   = useState(false);
   const [prevState, setPrevState] = useState(callState);
+  const [connStatus, setConnStatus] = useState<"connecting" | "poor" | "good">("connecting");
+  // Track ICE connection quality for status label
+  useEffect(() => {
+    if (callState === "connected") setConnStatus("good");
+    else if (callState === "calling" || callState === "receiving") setConnStatus("connecting");
+  }, [callState]);
 
   // Sound effects on state transitions
   useEffect(() => {
@@ -211,8 +217,11 @@ const CallOverlay = ({
           </>
         )}
         {isConnected && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-4 py-1.5 rounded-full z-30">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-4 py-1.5 rounded-full z-30 flex items-center gap-2">
             <span className="text-white text-sm font-medium">{fmt(callDuration)}</span>
+            {connStatus === "poor" && (
+              <span className="text-yellow-400 text-xs">· Poor connection</span>
+            )}
           </div>
         )}
         {isConnected && !isVideo && (
