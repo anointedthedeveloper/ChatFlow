@@ -22,7 +22,7 @@ const ChatPage = () => {
 
   const {
     callState, callType, remoteUsername, localStream, remoteStream,
-    callDuration, startCall, acceptCall, endCall, toggleMute, toggleVideo,
+    callDuration, startCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo,
   } = useWebRTC();
 
   const handleCreateDM = useCallback(async (userId: string) => {
@@ -123,6 +123,7 @@ const ChatPage = () => {
             callDuration={callDuration}
             onAccept={handleAcceptCall}
             onEnd={endCall}
+            onReject={rejectCall}
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
           />
