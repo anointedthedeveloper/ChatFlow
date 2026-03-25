@@ -82,15 +82,39 @@ export function useGithub() {
     setLoading(true);
     setError(null);
     try {
-      const url = token
-        ? "https://api.github.com/user/repos?sort=updated&per_page=30"
-        : `https://api.github.com/users/${githubUser}/repos?sort=updated&per_page=30`;
-      const data = await ghFetch(url);
-      setRepos(data as GithubRepo[]);
+      // Fetch all pages (up to 300 repos)
+      let all: GithubRepo[] = [];
+      let page = 1;
+      while (true) {
+        const url = token
+          ? `https://api.github.com/user/repos?sort=updated&per_page=100&page=${page}`
+          : `https://api.github.com/users/${githubUser}/repos?sort=updated&per_page=100&page=${page}`;
+        const data = await ghFetch(url);
+        if (!Array.isArray(data) || data.length === 0) break;
+        all = [...all, ...(data as GithubRepo[])];
+        if (data.length < 100) break;
+        page++;
+      }
+      setRepos(all);
     } catch (e: any) {
-      setError(e.message);
+      const msg = e.message || "";
+      if (msg.includes("401")) setError("Token expired or invalid — please reconnect");
+      else if (msg.includes("403")) setError("Rate limit exceeded — try again later");
+      else if (msg.includes("404")) setError("User not found");
+      else setError("Failed to fetch repos: " + msg);
     } finally {
       setLoading(false);
+    }
+  }, [token, githubUser, ghFetch]);
+
+  const searchRepos = useCallback(async (query: string): Promise<GithubRepo[]> => {
+    if (!query.trim()) return [];
+    try {
+      const q = token ? `${query} user:${githubUser}` : `${query} user:${githubUser}`;
+      const data = await ghFetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=updated&per_page=20`);
+      return (data.items || []) as GithubRepo[];
+    } catch (e: any) {
+      return [];
     }
   }, [token, githubUser, ghFetch]);
 
@@ -161,7 +185,7 @@ export function useGithub() {
 
   return {
     token, githubUser, repos, loading, error,
-    connectWithToken, disconnect, fetchRepos,
+    connectWithToken, disconnect, fetchRepos, searchRepos,
     fetchRepoPreview, fetchCommits, fetchIssues,
     createIssue, fetchPRs, fetchBranches, commitFile,
     parseGithubUrl,
