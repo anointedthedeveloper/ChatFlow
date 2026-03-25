@@ -179,11 +179,9 @@ const CallOverlay = ({
   const isVideo     = callType === "video";
   const isConnected = callState === "connected";
   const showVideo   = isVideo && isConnected;
-  // Remote video is active when: not sharing, not swapped, remote stream has live video
-  const showRemoteMain = showVideo && !isSharing && !swapped && remoteStream && remoteVideoActive;
 
-  const AvatarCircle = ({ url, name, size = "lg" }: { url?: string | null; name: string; size?: "sm" | "lg" }) => {
-    const sz = size === "lg" ? "h-24 w-24 text-3xl" : "h-10 w-10 text-sm";
+  const AvatarCircle = ({ url, name, size = "lg" }: { url?: string | null; name: string; size?: "sm" | "md" | "lg" }) => {
+    const sz = size === "lg" ? "h-24 w-24 text-3xl" : size === "md" ? "h-16 w-16 text-xl" : "h-10 w-10 text-sm";
     return url
       ? <img src={url} alt={name} className={`${sz} rounded-full object-cover border-2 border-white/20 shadow-2xl`} />
       : <div className={`${sz} rounded-full gradient-primary flex items-center justify-center font-bold text-white shadow-2xl`}>{name[0]?.toUpperCase() || "?"}</div>;
@@ -196,21 +194,34 @@ const CallOverlay = ({
       {/* Background */}
       <div className={`absolute inset-0 ${showVideo ? "bg-black" : "bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900"}`} />
 
-      {/* Main video element — always rendered so ref is always attached */}
+      {/* Main video element */}
       <video
         ref={mainVideoRef}
         autoPlay playsInline
-        muted={swapped || isSharing} // mute when showing local or screen (no echo)
+        muted={swapped || isSharing}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
           showVideo ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       />
 
-      {/* Remote avatar fallback when remote camera is off */}
-      {showVideo && !isSharing && !swapped && !showRemoteMain && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-          <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} />
-        </div>
+      {/* Avatar overlays on main view when camera is off */}
+      {showVideo && !isSharing && (
+        <>
+          {/* Remote camera off — show remote avatar in main (default view) */}
+          {!swapped && !remoteVideoActive && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3">
+              <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} size="lg" />
+              <span className="text-white/60 text-sm">{remoteUsername} turned off camera</span>
+            </div>
+          )}
+          {/* Local camera off — show local avatar in main (swapped view) */}
+          {swapped && isVideoOff && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3">
+              <AvatarCircle url={localAvatarUrl} name={localUsername || "You"} size="lg" />
+              <span className="text-white/60 text-sm">Your camera is off</span>
+            </div>
+          )}
+        </>
       )}
 
       {/* PiP — always muted (local feed or remote when swapped) */}
@@ -224,13 +235,20 @@ const CallOverlay = ({
         >
           <video
             ref={pipVideoRef}
-            autoPlay playsInline muted // always muted — PiP is always local when not swapped
+            autoPlay playsInline muted
             className="w-full h-full object-cover bg-black"
           />
-          {/* Avatar overlay when local camera is off and PiP is local */}
+          {/* Avatar in PiP when that feed's camera is off */}
+          {/* PiP is local (default) — show local avatar when local cam off */}
           {!swapped && isVideoOff && !isSharing && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/85">
               <AvatarCircle url={localAvatarUrl} name={localUsername || "You"} size="sm" />
+            </div>
+          )}
+          {/* PiP is remote (swapped) — show remote avatar when remote cam off */}
+          {swapped && !remoteVideoActive && !isSharing && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/85">
+              <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} size="sm" />
             </div>
           )}
           <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">

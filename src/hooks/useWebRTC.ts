@@ -20,24 +20,46 @@ export interface CallSignal {
   chatRoomId?: string;
 }
 
+// Single persistent AudioContext — created lazily on first user gesture
+let _audioCtx: AudioContext | null = null;
+
+function getAudioCtx(): AudioContext | null {
+  try {
+    if (!_audioCtx || _audioCtx.state === "closed") {
+      _audioCtx = new AudioContext();
+    }
+    if (_audioCtx.state === "suspended") {
+      _audioCtx.resume().catch(() => {});
+    }
+    return _audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+// Prime on first user interaction so ringtone works immediately
+if (typeof window !== "undefined") {
+  const prime = () => getAudioCtx();
+  window.addEventListener("pointerdown", prime, { once: true, capture: true });
+  window.addEventListener("keydown",     prime, { once: true, capture: true });
+}
+
 function createRingtone() {
   let interval: ReturnType<typeof setInterval> | null = null;
 
   const RINGTONE_FREQS: Record<string, number[][]> = {
     default: [[880, 0, 0.15], [1100, 0.2, 0.15], [880, 0.4, 0.15]],
-    classic: [[660, 0, 0.2], [660, 0.3, 0.2], [660, 0.6, 0.2]],
-    soft:    [[523, 0, 0.3], [659, 0.35, 0.3], [784, 0.7, 0.3]],
-    pulse:   [[1000, 0, 0.08], [1000, 0.15, 0.08], [1000, 0.3, 0.08], [1000, 0.45, 0.08]],
+    classic: [[660, 0, 0.2],  [660, 0.3, 0.2],  [660, 0.6, 0.2]],
+    soft:    [[523, 0, 0.3],  [659, 0.35, 0.3], [784, 0.7, 0.3]],
+    pulse:   [[1000, 0, 0.08],[1000, 0.15, 0.08],[1000, 0.3, 0.08],[1000, 0.45, 0.08]],
   };
 
   const ring = () => {
+    const ctx = getAudioCtx();
+    if (!ctx || ctx.state !== "running") return; // only play after user gesture
     try {
       const key = localStorage.getItem("chatflow_ringtone") || "default";
       const freqs = RINGTONE_FREQS[key] || RINGTONE_FREQS.default;
-      // Reuse a single AudioContext — create lazily, resume if suspended
-      let ctx: AudioContext;
-      try { ctx = new AudioContext(); } catch { return; }
-      if (ctx.state === "suspended") ctx.resume().catch(() => {});
       const gain = ctx.createGain();
       gain.gain.value = 0.25;
       gain.connect(ctx.destination);
@@ -49,7 +71,6 @@ function createRingtone() {
         osc.start(ctx.currentTime + start);
         osc.stop(ctx.currentTime + start + dur);
       });
-      setTimeout(() => ctx.close(), 1500);
     } catch {}
   };
 
