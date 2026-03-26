@@ -92,7 +92,7 @@ const DashboardPage = () => {
           <h1 className="text-base font-semibold text-foreground">Dashboard</h1>
           <p className="text-xs text-muted-foreground">Welcome back, {profile?.display_name || profile?.username}</p>
         </div>
-        <button onClick={() => navigate("/")} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
+        <button onClick={() => navigate("/chat")} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
           <MessageSquare className="h-3.5 w-3.5" /> Chats
         </button>
         <button onClick={() => navigate("/workspace")} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
@@ -122,7 +122,7 @@ const DashboardPage = () => {
                 <button onClick={() => navigate("/workspace")} className="rounded-xl gradient-primary px-4 py-2.5 text-sm font-medium text-white">
                   Open Workspace
                 </button>
-                <button onClick={() => navigate("/")} className="rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground">
+                <button onClick={() => navigate("/chat")} className="rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm font-medium text-foreground">
                   Go to Chats
                 </button>
               </div>
@@ -241,7 +241,7 @@ const DashboardPage = () => {
             {!githubUser ? (
               <div className="text-center py-4">
                 <p className="text-xs text-muted-foreground mb-2">GitHub not connected</p>
-                <button onClick={() => navigate("/")} className="text-xs text-primary hover:underline">Connect in Settings →</button>
+                <button onClick={() => navigate("/settings")} className="text-xs text-primary hover:underline">Connect in Settings →</button>
               </div>
             ) : recentCommits.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">No repos or commits found</p>
@@ -321,7 +321,7 @@ const DashboardPage = () => {
             {!githubUser ? (
               <div className="text-center py-4">
                 <p className="text-xs text-muted-foreground mb-2">Connect GitHub to see repos</p>
-                <button onClick={() => navigate("/")} className="text-xs text-primary hover:underline">Connect →</button>
+                <button onClick={() => navigate("/settings")} className="text-xs text-primary hover:underline">Connect →</button>
               </div>
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto">

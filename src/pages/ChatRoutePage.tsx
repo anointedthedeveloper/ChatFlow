@@ -1,8 +1,8 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import LoginPage from "./LoginPage";
+import ChatPage from "./ChatPage";
 
-const AuthRoutePage = () => {
+const ChatRoutePage = () => {
   const { loading, user } = useAuth();
 
   if (loading) {
@@ -13,7 +13,7 @@ const AuthRoutePage = () => {
     );
   }
 
-  return user ? <Navigate to="/chat" replace /> : <LoginPage />;
+  return user ? <ChatPage /> : <Navigate to="/auth" replace />;
 };
 
-export default AuthRoutePage;
+export default ChatRoutePage;

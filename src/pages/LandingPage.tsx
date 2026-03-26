@@ -1,8 +1,20 @@
-import { ArrowRight, Github, LayoutDashboard, MessageSquare, Sparkles, Workflow } from "lucide-react";
+import { ArrowRight, Check, Github, LayoutDashboard, MessageSquare, Moon, Sparkles, Sun, Workflow } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { useThemeContext } from "@/context/ThemeContext";
 
 const LandingPage = () => {
+  const { user } = useAuth();
+  const { mode, theme, setMode, setTheme } = useThemeContext();
+  const themes = [
+    { id: "default", color: "bg-violet-500", label: "Default" },
+    { id: "ocean", color: "bg-cyan-500", label: "Ocean" },
+    { id: "forest", color: "bg-green-500", label: "Forest" },
+    { id: "rose", color: "bg-rose-500", label: "Rose" },
+    { id: "doodle", color: "bg-purple-400", label: "Doodle" },
+  ] as const;
+
   return (
     <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.18),_transparent_22%),radial-gradient(circle_at_bottom_right,_hsl(var(--accent)/0.12),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 lg:px-10">
@@ -17,12 +29,25 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/auth" className="rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground">
-              Sign in
-            </Link>
-            <Link to="/auth" className="rounded-xl gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-              Get Started
-            </Link>
+            {user ? (
+              <>
+                <Link to="/dashboard" className="rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground">
+                  Dashboard
+                </Link>
+                <Link to="/chat" className="rounded-xl gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+                  Open Chat
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/auth" className="rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground">
+                  Sign in
+                </Link>
+                <Link to="/auth" className="rounded-xl gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </header>
 
@@ -39,14 +64,74 @@ const LandingPage = () => {
               <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
                 ChatFlow combines team chat, GitHub repo tools, project tracking, and an in-app IDE surface so your team can discuss, plan, inspect code, and ship from one shared workspace.
               </p>
+              <div className="mt-8 rounded-[28px] border border-border/70 bg-card/65 p-5 backdrop-blur-xl">
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Appearance</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Pick the look you want before you enter the workspace.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    {(["dark", "light"] as const).map((appearanceMode) => (
+                      <button
+                        key={appearanceMode}
+                        onClick={() => setMode(appearanceMode)}
+                        className={`flex-1 rounded-2xl border px-4 py-3 text-sm font-medium transition-all ${
+                          mode === appearanceMode
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        }`}
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          {appearanceMode === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                          {appearanceMode === "dark" ? "Dark" : "Light"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    {themes.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => setTheme(option.id)}
+                        className={`rounded-2xl border px-3 py-3 text-xs font-medium transition-all ${
+                          theme === option.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        }`}
+                      >
+                        <span className="flex flex-col items-center gap-2">
+                          <span className={`flex h-6 w-6 items-center justify-center rounded-full ${option.color}`}>
+                            {theme === option.id && <Check className="h-3.5 w-3.5 text-white" />}
+                          </span>
+                          {option.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/auth" className="inline-flex items-center gap-2 rounded-2xl gradient-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_hsl(var(--primary)/0.28)]">
-                  Get Started
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card/70 px-5 py-3 text-sm font-semibold text-foreground">
-                  Create account
-                </Link>
+                {user ? (
+                  <>
+                    <Link to="/chat" className="inline-flex items-center gap-2 rounded-2xl gradient-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_hsl(var(--primary)/0.28)]">
+                      Open Chat
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card/70 px-5 py-3 text-sm font-semibold text-foreground">
+                      Open dashboard
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/auth" className="inline-flex items-center gap-2 rounded-2xl gradient-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_hsl(var(--primary)/0.28)]">
+                      Get Started
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card/70 px-5 py-3 text-sm font-semibold text-foreground">
+                      Create account
+                    </Link>
+                  </>
+                )}
               </div>
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 {[
