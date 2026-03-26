@@ -398,7 +398,7 @@ const WorkspacePage = () => {
           showGithub={showGithub}
           onOpenTasks={() => navigate("/workspace/tasks")}
           onOpenProjects={() => navigate("/workspace/projects")}
-          onOpenGithub={() => standaloneView === "github" ? navigate("/workspace") : setShowGithub((v) => !v)}
+          onOpenGithub={() => standaloneView === "github" ? navigate("/workspace") : navigate("/workspace/github")}
           onOpenAddPeople={() => { setShowAddPeople(true); setAddError(""); setAddSuccess(""); setAddUsername(""); }}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebarCollapsed={() => setSidebarCollapsed((value) => !value)}

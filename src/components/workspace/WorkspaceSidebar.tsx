@@ -169,7 +169,7 @@ const WorkspaceSidebar = ({ workspaces, activeWorkspace, channels, members, acti
             </button>
             <button onClick={onOpenGithub}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
-                standaloneView === "github" || showGithub ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                standaloneView === "github" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               }`}>
               <Github className="h-3.5 w-3.5 shrink-0" /><span>GitHub</span>
             </button>
