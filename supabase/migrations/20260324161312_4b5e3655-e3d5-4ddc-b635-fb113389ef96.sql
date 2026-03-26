@@ -9,7 +9,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- Profiles table
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT NOT NULL,
   display_name TEXT,
@@ -22,19 +22,23 @@ CREATE TABLE public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Profiles are viewable by authenticated users" ON public.profiles;
 CREATE POLICY "Profiles are viewable by authenticated users" ON public.profiles
   FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" ON public.profiles
   FOR UPDATE TO authenticated USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Chat rooms table
-CREATE TABLE public.chat_rooms (
+CREATE TABLE IF NOT EXISTS public.chat_rooms (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT,
   is_group BOOLEAN NOT NULL DEFAULT false,
@@ -45,7 +49,7 @@ CREATE TABLE public.chat_rooms (
 ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
 
 -- Chat members table
-CREATE TABLE public.chat_members (
+CREATE TABLE IF NOT EXISTS public.chat_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   chat_room_id UUID NOT NULL REFERENCES public.chat_rooms(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -56,7 +60,7 @@ CREATE TABLE public.chat_members (
 ALTER TABLE public.chat_members ENABLE ROW LEVEL SECURITY;
 
 -- Messages table
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   chat_room_id UUID NOT NULL REFERENCES public.chat_rooms(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -68,41 +72,74 @@ CREATE TABLE public.messages (
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- Enable realtime on messages
-ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'profiles'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+  END IF;
+END
+$$;
 
 -- RLS: Chat rooms - members can see their rooms
+DROP POLICY IF EXISTS "Members can view their chat rooms" ON public.chat_rooms;
 CREATE POLICY "Members can view their chat rooms" ON public.chat_rooms
   FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.chat_members WHERE chat_room_id = id AND user_id = auth.uid()
   ));
+DROP POLICY IF EXISTS "Authenticated users can create chat rooms" ON public.chat_rooms;
 CREATE POLICY "Authenticated users can create chat rooms" ON public.chat_rooms
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
 
 -- RLS: Chat members
+DROP POLICY IF EXISTS "Members can view chat members" ON public.chat_members;
 CREATE POLICY "Members can view chat members" ON public.chat_members
   FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.chat_members cm WHERE cm.chat_room_id = chat_room_id AND cm.user_id = auth.uid()
   ));
+DROP POLICY IF EXISTS "Authenticated users can add members" ON public.chat_members;
 CREATE POLICY "Authenticated users can add members" ON public.chat_members
   FOR INSERT TO authenticated WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can remove themselves" ON public.chat_members;
 CREATE POLICY "Users can remove themselves" ON public.chat_members
   FOR DELETE TO authenticated USING (user_id = auth.uid());
 
 -- RLS: Messages - members can view messages in their rooms
+DROP POLICY IF EXISTS "Members can view messages" ON public.messages;
 CREATE POLICY "Members can view messages" ON public.messages
   FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.chat_members WHERE chat_room_id = messages.chat_room_id AND user_id = auth.uid()
   ));
+DROP POLICY IF EXISTS "Members can send messages" ON public.messages;
 CREATE POLICY "Members can send messages" ON public.messages
   FOR INSERT TO authenticated
   WITH CHECK (
     auth.uid() = sender_id AND
     EXISTS (SELECT 1 FROM public.chat_members WHERE chat_room_id = messages.chat_room_id AND user_id = auth.uid())
   );
+DROP POLICY IF EXISTS "Users can update their own messages read status" ON public.messages;
 CREATE POLICY "Users can update their own messages read status" ON public.messages
   FOR UPDATE TO authenticated
   USING (EXISTS (
@@ -123,6 +160,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

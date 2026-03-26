@@ -1,4 +1,4 @@
-CREATE TABLE public.workspace_project_files (
+CREATE TABLE IF NOT EXISTS public.workspace_project_files (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
   project_id UUID NOT NULL REFERENCES public.workspace_projects(id) ON DELETE CASCADE,
@@ -14,14 +14,15 @@ CREATE TABLE public.workspace_project_files (
   UNIQUE (project_id, repo_full_name, branch_name, file_path)
 );
 
-CREATE INDEX workspace_project_files_workspace_id_idx
+CREATE INDEX IF NOT EXISTS workspace_project_files_workspace_id_idx
   ON public.workspace_project_files(workspace_id);
 
-CREATE INDEX workspace_project_files_project_id_idx
+CREATE INDEX IF NOT EXISTS workspace_project_files_project_id_idx
   ON public.workspace_project_files(project_id);
 
 ALTER TABLE public.workspace_project_files ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Workspace members can view project files" ON public.workspace_project_files;
 CREATE POLICY "Workspace members can view project files"
 ON public.workspace_project_files
 FOR SELECT TO authenticated
@@ -34,6 +35,7 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS "Workspace members can import project files" ON public.workspace_project_files;
 CREATE POLICY "Workspace members can import project files"
 ON public.workspace_project_files
 FOR INSERT TO authenticated
@@ -47,6 +49,7 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "Workspace members can remove project files" ON public.workspace_project_files;
 CREATE POLICY "Workspace members can remove project files"
 ON public.workspace_project_files
 FOR DELETE TO authenticated

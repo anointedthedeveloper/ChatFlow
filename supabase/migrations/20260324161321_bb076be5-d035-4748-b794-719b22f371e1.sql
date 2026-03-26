@@ -1,6 +1,7 @@
 
 -- Fix: Restrict chat member insertion to room creators or self-adding
-DROP POLICY "Authenticated users can add members" ON public.chat_members;
+DROP POLICY IF EXISTS "Authenticated users can add members" ON public.chat_members;
+DROP POLICY IF EXISTS "Room creators or self can add members" ON public.chat_members;
 CREATE POLICY "Room creators or self can add members" ON public.chat_members
   FOR INSERT TO authenticated
   WITH CHECK (

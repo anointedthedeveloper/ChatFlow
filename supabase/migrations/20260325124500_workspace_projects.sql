@@ -1,4 +1,4 @@
-CREATE TABLE public.workspace_projects (
+CREATE TABLE IF NOT EXISTS public.workspace_projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -9,11 +9,12 @@ CREATE TABLE public.workspace_projects (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
-CREATE INDEX workspace_projects_workspace_id_idx
+CREATE INDEX IF NOT EXISTS workspace_projects_workspace_id_idx
   ON public.workspace_projects(workspace_id);
 
 ALTER TABLE public.workspace_projects ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Workspace members can view projects" ON public.workspace_projects;
 CREATE POLICY "Workspace members can view projects"
 ON public.workspace_projects
 FOR SELECT TO authenticated
@@ -26,6 +27,7 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS "Workspace members can create projects" ON public.workspace_projects;
 CREATE POLICY "Workspace members can create projects"
 ON public.workspace_projects
 FOR INSERT TO authenticated
@@ -39,6 +41,7 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "Workspace members can update projects" ON public.workspace_projects;
 CREATE POLICY "Workspace members can update projects"
 ON public.workspace_projects
 FOR UPDATE TO authenticated

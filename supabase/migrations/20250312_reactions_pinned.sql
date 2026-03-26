@@ -11,8 +11,11 @@ create table if not exists reactions (
 );
 
 alter table reactions enable row level security;
+drop policy if exists "See reactions" on reactions;
 create policy "See reactions" on reactions for select using (true);
+drop policy if exists "Add reaction" on reactions;
 create policy "Add reaction" on reactions for insert with check (auth.uid() = user_id);
+drop policy if exists "Remove reaction" on reactions;
 create policy "Remove reaction" on reactions for delete using (auth.uid() = user_id);
 
 -- Pinned message per chat room
@@ -20,4 +23,16 @@ alter table chat_rooms add column if not exists pinned_message_id uuid reference
 alter table chat_rooms add column if not exists pinned_message_text text;
 
 -- Realtime for reactions
-alter publication supabase_realtime add table reactions;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'reactions'
+  ) then
+    alter publication supabase_realtime add table reactions;
+  end if;
+end
+$$;
