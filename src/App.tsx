@@ -13,6 +13,7 @@ import DashboardPage from "./pages/DashboardPage.tsx";
 import AuthRoutePage from "./pages/AuthRoutePage.tsx";
 import ChatRoutePage from "./pages/ChatRoutePage.tsx";
 import EditorPage from "./pages/EditorPage.tsx";
+import RootLayout from "./components/layout/RootLayout.tsx";
 
 const queryClient = new QueryClient();
 
@@ -25,18 +26,20 @@ const App = () => (
           <Sonner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/chat" element={<ChatRoutePage />} />
-              <Route path="/auth" element={<AuthRoutePage />} />
-              <Route path="/workspace" element={<WorkspacePage />} />
-              <Route path="/workspace/tasks" element={<WorkspacePage />} />
-              <Route path="/workspace/projects" element={<WorkspacePage />} />
-              <Route path="/workspace/github" element={<WorkspacePage />} />
-              <Route path="/editor/:owner/:repo/:branch" element={<EditorPage />} />
-              <Route path="/editor/:owner/:repo" element={<EditorPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<NotFound />} />
+              <Route element={<RootLayout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/chat" element={<ChatRoutePage />} />
+                <Route path="/auth" element={<AuthRoutePage />} />
+                <Route path="/workspace" element={<WorkspacePage />} />
+                <Route path="/workspace/tasks" element={<WorkspacePage />} />
+                <Route path="/workspace/projects" element={<WorkspacePage />} />
+                <Route path="/workspace/github" element={<WorkspacePage />} />
+                <Route path="/editor/:owner/:repo/:branch" element={<EditorPage />} />
+                <Route path="/editor/:owner/:repo" element={<EditorPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
             </Routes>
           </BrowserRouter>
         </AuthProvider>
