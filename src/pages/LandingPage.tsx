@@ -138,19 +138,19 @@ const LandingPage = () => {
           <div className="flex items-center gap-2">
             {user ? (
               <>
-                <Link to="/dashboard" className="rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground">
+                <Link to="/dashboard" className="hidden sm:inline-flex rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-background">
                   Dashboard
                 </Link>
-                <Link to="/chat" className="rounded-xl gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+                <Link to="/chat" className="rounded-xl gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 shadow-sm">
                   Open Chat
                 </Link>
               </>
             ) : (
               <>
-                <Link to="/auth" className="rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground">
+                <Link to="/auth" className="hidden sm:inline-flex rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-background">
                   Sign in
                 </Link>
-                <Link to="/auth" className="rounded-xl gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+                <Link to="/auth" className="rounded-xl gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 shadow-sm">
                   Get Started
                 </Link>
               </>
@@ -165,11 +165,11 @@ const LandingPage = () => {
                 <TerminalSquare className="h-3.5 w-3.5 text-primary" />
                 Developer workspace messaging
               </div>
-              <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                A chat homepage that feels like a developer console, not just another landing page.
+              <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-7xl leading-[1.1]">
+                Developer workspace messaging for modern teams.
               </h1>
-              <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-                RepoRoom combines team conversation, project structure, GitHub context, and in-app workspace tools so your team can move from “what should we do?” to “it’s shipped” in one flow.
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground/90 sm:text-xl">
+                RepoRoom combines real-time chat, GitHub-linked projects, and workspace tools in one fluid interface. Stop context switching and start shipping.
               </p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
