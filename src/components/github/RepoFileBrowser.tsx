@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { 
   ChevronDown, ChevronRight, Copy, Download, Eye, ExternalLink, FileText, Folder, FolderOpen, 
   GitCommit, Maximize2, Menu, Minimize2, Pencil, Play, Save, TerminalSquare, X, 
-  Files, Search, GitBranch, Settings, User, Bug, PlayCircle, Code2, Monitor, Info, Check, AlertCircle, FileCode, FileJson, FilePlus, FolderPlus, RefreshCw, MoreVertical, Layout, PanelLeft, PanelBottom, Sidebar
+  Files, Search, GitBranch, Settings, User, Bug, PlayCircle, Code2, Monitor, Info, Check, AlertCircle, FileCode, FileJson, FilePlus, FolderPlus, RefreshCw, MoreVertical, Layout, PanelLeft, PanelBottom, Sidebar, Trash2, Package, Globe, ArrowLeft, ArrowRight, RotateCw
 } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";
@@ -152,6 +152,18 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
   const [newItemType, setNewItemType] = useState<"file" | "folder">("file");
   const [newItemName, setNewItemName] = useState("");
   const [creatingItem, setCreatingItem] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [terminalTab, setTerminalTab] = useState<"terminal" | "npm" | "browser">("terminal");
+  const [npmInput, setNpmInput] = useState("");
+  const [npmLines, setNpmLines] = useState<ConsoleLine[]>([
+    { id: "npm-boot", kind: "info", text: "npm sandbox — commands: install <pkg>, uninstall <pkg>, list, clear" },
+  ]);
+  const [browserUrl, setBrowserUrl] = useState("https://chatflowv.vercel.app");
+  const [browserInput, setBrowserInput] = useState("https://chatflowv.vercel.app");
+  const [browserKey, setBrowserKey] = useState(0);
+  const [goLiveUrl, setGoLiveUrl] = useState<string | null>(null);
+  const npmEndRef = useRef<HTMLDivElement>(null);
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([
     { id: "boot", kind: "info", text: "Sandbox ready. Commands: help, run, preview, info, clear" },
   ]);
@@ -333,6 +345,88 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
     setCommitting(false);
   };
 
+  const deleteFile = async (node: TreeNode) => {
+    if (!token) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${node.path}`, {
+        method: "DELETE",
+        headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: `Delete ${node.path}`, sha: node.sha, branch }),
+      });
+      if (res.ok) {
+        pushConsole("info", `Deleted ${node.path}`);
+        closeTab(node.path);
+        await fetchRepoData();
+      } else {
+        pushConsole("stderr", `Failed to delete ${node.path}`);
+      }
+    } catch {
+      pushConsole("stderr", `Error deleting ${node.path}`);
+    }
+    setDeleting(false);
+    setDeleteConfirm(null);
+  };
+
+  const runNpmCommand = () => {
+    const cmd = npmInput.trim();
+    if (!cmd) return;
+    const pushNpm = (kind: ConsoleLine["kind"], text: string) =>
+      setNpmLines(prev => [...prev, { id: `${Date.now()}-${prev.length}`, kind, text }]);
+    pushNpm("input", `$ npm ${cmd}`);
+    setNpmInput("");
+    const [action, ...args] = cmd.split(" ");
+    if (action === "clear") { setNpmLines([]); return; }
+    if (action === "list") {
+      const pkgNode = tree.find(n => n.name === "package.json" && !n.path.includes("/"));
+      if (!pkgNode) { pushNpm("stderr", "No package.json found at root"); return; }
+      const tab = tabs.find(t => t.path === pkgNode.path);
+      if (tab?.content) {
+        try {
+          const pkg = JSON.parse(tab.content) as { dependencies?: Record<string,string>; devDependencies?: Record<string,string> };
+          const deps = Object.keys(pkg.dependencies || {});
+          const dev = Object.keys(pkg.devDependencies || {});
+          if (deps.length) { pushNpm("info", "dependencies:"); deps.forEach(d => pushNpm("stdout", `  ${d}`)); }
+          if (dev.length) { pushNpm("info", "devDependencies:"); dev.forEach(d => pushNpm("stdout", `  ${d}`)); }
+          if (!deps.length && !dev.length) pushNpm("info", "No dependencies found");
+        } catch { pushNpm("stderr", "Could not parse package.json"); }
+      } else {
+        pushNpm("info", "Open package.json first to list dependencies");
+      }
+      return;
+    }
+    if (action === "install" || action === "i") {
+      const pkg = args[0];
+      if (!pkg) { pushNpm("stderr", "Usage: install <package-name>"); return; }
+      pushNpm("info", `Simulating: npm install ${pkg}`);
+      pushNpm("stdout", `added ${pkg} (sandbox — no actual install runs in browser)`);
+      pushNpm("info", "To actually install, run this in your local terminal.");
+      return;
+    }
+    if (action === "uninstall" || action === "un") {
+      const pkg = args[0];
+      if (!pkg) { pushNpm("stderr", "Usage: uninstall <package-name>"); return; }
+      pushNpm("info", `Simulating: npm uninstall ${pkg}`);
+      pushNpm("stdout", `removed ${pkg} (sandbox)`);
+      return;
+    }
+    pushNpm("stderr", `Unknown: npm ${cmd}. Try: install <pkg>, uninstall <pkg>, list, clear`);
+  };
+
+  const goLive = () => {
+    if (!activeTab) return;
+    const doc = previewDoc(activeTab.path, activeTab.editContent);
+    if (!doc) { pushConsole("stderr", "Go Live only supports html/css/js files"); return; }
+    const blob = new Blob([doc], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    setGoLiveUrl(url);
+    setTerminalTab("browser");
+    setBrowserUrl(url);
+    setBrowserInput(url);
+    setBrowserKey(k => k + 1);
+    pushConsole("info", "Go Live: opened in mini browser");
+  };
+
   const startNewItem = (type: "file" | "folder", parentPath: string) => {
     setNewItemType(type);
     setNewItemParent(parentPath);
@@ -379,6 +473,8 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
     setCreatingItem(false);
   };
 
+  useEffect(() => { npmEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [npmLines]);
+
   const runConsoleCommand = () => {
     const command = consoleInput.trim();
     if (!command) return;
@@ -406,7 +502,7 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
       pushConsole("info", activeTab ? activeTab.path : "No file selected");
       return;
     }
-    pushConsole("stderr", `Unknown command: ${command}`);
+    pushConsole("stderr", `Unknown command: ${command}. Try: help, run, preview, info, clear`);
   };
 
   const getChildren = (parentPath: string) => tree.filter((node) => {
@@ -453,12 +549,24 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
             </>
           )}
           <span className="truncate text-[13px] flex-1">{node.name}</span>
-          {node.type === "tree" && (
-            <div className="hidden group-hover:flex gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
-              <button onClick={() => startNewItem("file", node.path)} className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground" title="New File"><FilePlus className="h-3 w-3" /></button>
-              <button onClick={() => startNewItem("folder", node.path)} className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground" title="New Folder"><FolderPlus className="h-3 w-3" /></button>
-            </div>
-          )}
+          <div className="hidden group-hover:flex gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+            {node.type === "tree" && (
+              <>
+                <button onClick={() => startNewItem("file", node.path)} className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground" title="New File"><FilePlus className="h-3 w-3" /></button>
+                <button onClick={() => startNewItem("folder", node.path)} className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground" title="New Folder"><FolderPlus className="h-3 w-3" /></button>
+              </>
+            )}
+            {node.type === "blob" && token && (
+              deleteConfirm === node.path ? (
+                <>
+                  <button onClick={() => void deleteFile(node)} disabled={deleting} className="p-1 rounded text-rose-500 hover:bg-rose-500/10 text-[10px] font-bold" title="Confirm delete">{deleting ? <RefreshCw className="h-3 w-3 animate-spin" /> : "del?"}</button>
+                  <button onClick={() => setDeleteConfirm(null)} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                </>
+              ) : (
+                <button onClick={() => setDeleteConfirm(node.path)} className="p-1 hover:bg-rose-500/10 rounded text-muted-foreground hover:text-rose-500" title="Delete file"><Trash2 className="h-3 w-3" /></button>
+              )
+            )}
+          </div>
         </div>
         {node.type === "tree" && isOpen && (
           <>
@@ -869,38 +977,104 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                     <div className="h-full bg-background/50 backdrop-blur-md flex flex-col border-t border-border/40">
                       <div className="h-12 flex items-center px-6 gap-6 border-b border-border/20">
                         <button className="text-[10px] font-black uppercase tracking-[0.2em] text-primary border-b-2 border-primary py-4">Terminal</button>
-                        <button className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground py-4 transition-colors">Debug</button>
                         <div className="ml-auto flex items-center gap-2">
-                          <button onClick={() => setConsoleLines([])} className="p-2 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-all" title="Clear Console"><RefreshCw className="h-4 w-4" /></button>
                           <button onClick={() => setShowTerminal(false)} className="p-2 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-all"><X className="h-4 w-4" /></button>
                         </div>
                       </div>
-                      <div className="flex-1 overflow-y-auto px-6 py-4 font-mono text-[12px] space-y-2">
-                        {consoleLines.map((line) => (
-                          <div key={line.id} className={cn(
-                            "flex gap-3 px-3 py-1.5 rounded-lg",
-                            line.kind === "stderr" ? "bg-rose-500/5 text-rose-400" : 
-                            line.kind === "stdout" ? "bg-emerald-500/5 text-emerald-400" : 
-                            line.kind === "input" ? "bg-sky-500/5 text-sky-400 font-bold" : "text-muted-foreground"
-                          )}>
-                            {line.kind === "input" && <span className="opacity-40 tracking-tighter">{">>>"}</span>}
-                            <span>{line.text}</span>
-                          </div>
+
+                      {/* Terminal tabs */}
+                      <div className="flex border-b border-border/20 px-4 gap-4">
+                        {(["terminal", "npm", "browser"] as const).map(t => (
+                          <button key={t} onClick={() => setTerminalTab(t)}
+                            className={cn("text-[10px] font-black uppercase tracking-[0.15em] py-2.5 transition-colors flex items-center gap-1.5",
+                              terminalTab === t ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground")}>
+                            {t === "npm" && <Package className="h-3 w-3" />}
+                            {t === "browser" && <Globe className="h-3 w-3" />}
+                            {t}
+                          </button>
                         ))}
-                        <div ref={consoleEndRef} />
-                      </div>
-                      <div className="p-4 px-6 border-t border-border/20 bg-muted/10 flex items-center gap-3">
-                        <div className="h-6 w-6 rounded-lg bg-sky-500/10 flex items-center justify-center">
-                          <span className="text-sky-500 font-bold text-xs">$</span>
+                        <div className="ml-auto flex items-center gap-1 pb-1">
+                          {terminalTab === "terminal" && <button onClick={() => setConsoleLines([])} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground" title="Clear"><RefreshCw className="h-3.5 w-3.5" /></button>}
+                          {terminalTab === "npm" && <button onClick={() => setNpmLines([])} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground" title="Clear"><RefreshCw className="h-3.5 w-3.5" /></button>}
                         </div>
-                        <input 
-                          value={consoleInput} 
-                          onChange={(e) => setConsoleInput(e.target.value)} 
-                          onKeyDown={(e) => e.key === "Enter" && runConsoleCommand()} 
-                          placeholder="Type command... (help, run, preview, clear)"
-                          className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
-                        />
                       </div>
+
+                      {/* Terminal */}
+                      {terminalTab === "terminal" && (
+                        <>
+                          <div className="flex-1 overflow-y-auto px-6 py-4 font-mono text-[12px] space-y-2">
+                            {consoleLines.map((line) => (
+                              <div key={line.id} className={cn(
+                                "flex gap-3 px-3 py-1.5 rounded-lg",
+                                line.kind === "stderr" ? "bg-rose-500/5 text-rose-400" :
+                                line.kind === "stdout" ? "bg-emerald-500/5 text-emerald-400" :
+                                line.kind === "input" ? "bg-sky-500/5 text-sky-400 font-bold" : "text-muted-foreground"
+                              )}>
+                                {line.kind === "input" && <span className="opacity-40 tracking-tighter">{">>>"}</span>}
+                                <span>{line.text}</span>
+                              </div>
+                            ))}
+                            <div ref={consoleEndRef} />
+                          </div>
+                          <div className="p-4 px-6 border-t border-border/20 bg-muted/10 flex items-center gap-3">
+                            <span className="text-sky-500 font-bold text-xs">$</span>
+                            <input value={consoleInput} onChange={e => setConsoleInput(e.target.value)}
+                              onKeyDown={e => e.key === "Enter" && runConsoleCommand()}
+                              placeholder="help, run, preview, info, clear"
+                              className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-foreground placeholder:text-muted-foreground/50" />
+                          </div>
+                        </>
+                      )}
+
+                      {/* NPM */}
+                      {terminalTab === "npm" && (
+                        <>
+                          <div className="flex-1 overflow-y-auto px-6 py-4 font-mono text-[12px] space-y-2">
+                            {npmLines.map(line => (
+                              <div key={line.id} className={cn(
+                                "flex gap-3 px-3 py-1.5 rounded-lg",
+                                line.kind === "stderr" ? "bg-rose-500/5 text-rose-400" :
+                                line.kind === "stdout" ? "bg-emerald-500/5 text-emerald-400" :
+                                line.kind === "input" ? "bg-amber-500/5 text-amber-400 font-bold" : "text-muted-foreground"
+                              )}>
+                                <span>{line.text}</span>
+                              </div>
+                            ))}
+                            <div ref={npmEndRef} />
+                          </div>
+                          <div className="p-4 px-6 border-t border-border/20 bg-muted/10 flex items-center gap-3">
+                            <Package className="h-4 w-4 text-amber-500 shrink-0" />
+                            <span className="text-amber-500 font-bold text-xs shrink-0">npm</span>
+                            <input value={npmInput} onChange={e => setNpmInput(e.target.value)}
+                              onKeyDown={e => e.key === "Enter" && runNpmCommand()}
+                              placeholder="install <pkg>  |  uninstall <pkg>  |  list  |  clear"
+                              className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-foreground placeholder:text-muted-foreground/50" />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Mini Browser */}
+                      {terminalTab === "browser" && (
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20 bg-muted/10">
+                            <button onClick={() => setBrowserKey(k => k + 1)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground"><RotateCw className="h-3.5 w-3.5" /></button>
+                            <input
+                              value={browserInput}
+                              onChange={e => setBrowserInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter") { setBrowserUrl(browserInput); setBrowserKey(k => k + 1); } }}
+                              className="flex-1 bg-muted/50 border border-border/40 rounded-lg px-3 py-1 text-xs font-mono text-foreground outline-none focus:ring-1 focus:ring-primary/30"
+                            />
+                            <a href={browserUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground"><ExternalLink className="h-3.5 w-3.5" /></a>
+                          </div>
+                          <iframe
+                            key={browserKey}
+                            src={browserUrl}
+                            title="Mini Browser"
+                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                            className="flex-1 border-0 bg-white"
+                          />
+                        </div>
+                      )}
                     </div>
                   </Panel>
                 </>
@@ -931,7 +1105,7 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
               {activeTab && (
                 <div className="hidden sm:flex items-center gap-4">
                   <span className="hover:bg-white/10 px-2 py-0.5 rounded-lg cursor-pointer transition-colors uppercase">{EXT_LANG[activeTab.name.split(".").pop() || ""] || "Plain Text"}</span>
-                  <div className="flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded-lg cursor-pointer transition-colors">
+                  <div onClick={goLive} className="flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded-lg cursor-pointer transition-colors">
                     <Monitor className="h-3.5 w-3.5" />
                     <span>Go Live</span>
                   </div>
