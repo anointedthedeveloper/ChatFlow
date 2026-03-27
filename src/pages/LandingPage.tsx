@@ -154,6 +154,13 @@ const LandingPage = () => {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/60 text-muted-foreground transition-all hover:bg-background hover:text-foreground"
+              title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+            >
+              {mode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             {user ? (
               <>
                 <Link to="/dashboard" className="hidden sm:inline-flex rounded-xl border border-border bg-background/70 px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-background">
@@ -546,9 +553,10 @@ const LandingPage = () => {
           <div className="flex flex-col gap-4 pt-8 border-t border-border/20 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
             <p>&copy; 2026 RepoRoom. All rights reserved.</p>
             <p className="flex items-center gap-2">
-              Built with <Sparkles className="h-3 w-3 text-primary" /> by{" "}
-              <a href="https://github.com/anointedthedeveloper" target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground hover:text-primary transition-colors">
-                Anointed the Developer
+              Powered by{" "}
+              <a href="https://github.com/anointedthedeveloper" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary transition-colors">
+                <Sparkles className="h-3 w-3 text-primary" />
+                Anobyte
               </a>
             </p>
           </div>
