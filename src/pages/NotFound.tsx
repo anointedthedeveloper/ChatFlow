@@ -5,7 +5,11 @@ const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+    // Ignore static asset paths — those are served by the web server, not React Router
+    const isAsset = /\.(png|jpg|jpeg|gif|svg|ico|webp|mp4|pdf|json|xml|txt|css|js|woff2?)$/i.test(location.pathname);
+    if (!isAsset) {
+      console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+    }
   }, [location.pathname]);
 
   return (
