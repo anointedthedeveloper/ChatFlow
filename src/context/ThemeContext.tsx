@@ -17,6 +17,23 @@ const ThemeContext = createContext<ThemeContextType>({
   setMode: () => {}, setTheme: () => {}, setWallpaper: () => {},
 });
 
+// theme-color values per theme+mode combination
+const THEME_COLORS: Record<string, Record<string, string>> = {
+  default: { dark: "#6d28d9", light: "#7c3aed" },
+  ocean:   { dark: "#0ea5e9", light: "#0284c7" },
+  forest:  { dark: "#22c55e", light: "#16a34a" },
+  rose:    { dark: "#f43f5e", light: "#e11d48" },
+  doodle:  { dark: "#a855f7", light: "#9333ea" },
+};
+
+const BG_COLORS: Record<string, Record<string, string>> = {
+  default: { dark: "#0a0e18", light: "#f3f4f8" },
+  ocean:   { dark: "#061018", light: "#f0f7fa" },
+  forest:  { dark: "#061209", light: "#f0f7f2" },
+  rose:    { dark: "#120609", light: "#fdf2f5" },
+  doodle:  { dark: "#0d0814", light: "#f5f0fd" },
+};
+
 export const useThemeContext = () => useContext(ThemeContext);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -30,6 +47,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.classList.remove("theme-ocean", "theme-forest", "theme-rose", "theme-doodle");
     root.classList.add(m);
     if (t !== "default") root.classList.add(`theme-${t}`);
+
+    // Update theme-color meta (browser tab bar / PWA menu bar)
+    const themeColor = THEME_COLORS[t]?.[m] ?? "#6d28d9";
+    const bgColor = BG_COLORS[t]?.[m] ?? "#0a0e18";
+    let metaTheme = document.querySelector<HTMLMetaElement>("meta[name='theme-color']");
+    if (!metaTheme) {
+      metaTheme = document.createElement("meta");
+      metaTheme.name = "theme-color";
+      document.head.appendChild(metaTheme);
+    }
+    metaTheme.content = themeColor;
+
+    // Also update manifest background_color via a meta tag for installed PWA
+    let metaBg = document.querySelector<HTMLMetaElement>("meta[name='background-color']");
+    if (!metaBg) {
+      metaBg = document.createElement("meta");
+      metaBg.name = "background-color";
+      document.head.appendChild(metaBg);
+    }
+    metaBg.content = bgColor;
   };
 
   useEffect(() => { apply(mode, theme); }, [mode, theme]);
