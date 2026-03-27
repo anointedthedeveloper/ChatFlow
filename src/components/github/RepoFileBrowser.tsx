@@ -148,6 +148,10 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
   const [committing, setCommitting] = useState(false);
   const [consoleInput, setConsoleInput] = useState("");
   const [previewNonce, setPreviewNonce] = useState(0);
+  const [newItemParent, setNewItemParent] = useState<string | null>(null);
+  const [newItemType, setNewItemType] = useState<"file" | "folder">("file");
+  const [newItemName, setNewItemName] = useState("");
+  const [creatingItem, setCreatingItem] = useState(false);
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([
     { id: "boot", kind: "info", text: "Sandbox ready. Commands: help, run, preview, info, clear" },
   ]);
@@ -329,6 +333,52 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
     setCommitting(false);
   };
 
+  const startNewItem = (type: "file" | "folder", parentPath: string) => {
+    setNewItemType(type);
+    setNewItemParent(parentPath);
+    setNewItemName("");
+    setActiveSidebarTab("explorer");
+    setShowSidebar(true);
+  };
+
+  const createNewItem = async () => {
+    if (!newItemName.trim() || !token) return;
+    setCreatingItem(true);
+    const parent = newItemParent === "root" ? "" : newItemParent + "/";
+    const filePath = newItemType === "folder"
+      ? `${parent}${newItemName.trim()}/.gitkeep`
+      : `${parent}${newItemName.trim()}`;
+    const encoded = btoa("");
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, {
+        method: "PUT",
+        headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: `Create ${filePath}`, content: encoded, branch }),
+      });
+      if (res.ok) {
+        pushConsole("info", `Created ${filePath}`);
+        setNewItemParent(null);
+        setNewItemName("");
+        await fetchRepoData();
+        if (newItemType === "folder") {
+          const folderPath = `${parent}${newItemName.trim()}`;
+          setExpanded(prev => new Set([...prev, folderPath]));
+        } else {
+          const data = await res.json() as { content: { sha: string } };
+          const name = filePath.split("/").pop() || filePath;
+          const newTab: Tab = { path: filePath, name, sha: data.content.sha, content: "", editContent: "", isModified: false, loading: false };
+          setTabs(prev => [...prev, newTab]);
+          setActiveTabPath(filePath);
+        }
+      } else {
+        pushConsole("stderr", `Failed to create ${filePath}. Check token permissions.`);
+      }
+    } catch {
+      pushConsole("stderr", `Error creating ${filePath}`);
+    }
+    setCreatingItem(false);
+  };
+
   const runConsoleCommand = () => {
     const command = consoleInput.trim();
     if (!command) return;
@@ -372,7 +422,12 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
     const isActive = activeTabPath === node.path;
     return (
       <div key={node.path}>
-        <button
+        <div
+          className={cn(
+            "w-full flex items-center gap-2 py-1 px-3 text-left hover:bg-muted/40 transition-all rounded-lg group mb-0.5 cursor-pointer",
+            isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground/70"
+          )}
+          style={{ paddingLeft: `${depth * 12 + 16}px` }}
           onClick={() => {
             if (node.type === "tree") {
               setExpanded((prev) => {
@@ -385,11 +440,6 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
               void openFile(node);
             }
           }}
-          className={cn(
-            "w-full flex items-center gap-2 py-1 px-3 text-left hover:bg-muted/40 transition-all rounded-lg group mb-0.5",
-            isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground/70"
-          )}
-          style={{ paddingLeft: `${depth * 12 + 16}px` }}
         >
           {node.type === "tree" ? (
             <>
@@ -402,9 +452,36 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
               <div className="shrink-0">{getFileIcon(node.name)}</div>
             </>
           )}
-          <span className="truncate text-[13px]">{node.name}</span>
-        </button>
-        {node.type === "tree" && isOpen && renderTree(node.path, depth + 1)}
+          <span className="truncate text-[13px] flex-1">{node.name}</span>
+          {node.type === "tree" && (
+            <div className="hidden group-hover:flex gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+              <button onClick={() => startNewItem("file", node.path)} className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground" title="New File"><FilePlus className="h-3 w-3" /></button>
+              <button onClick={() => startNewItem("folder", node.path)} className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground" title="New Folder"><FolderPlus className="h-3 w-3" /></button>
+            </div>
+          )}
+        </div>
+        {node.type === "tree" && isOpen && (
+          <>
+            {newItemParent === node.path && (
+              <div className="flex items-center gap-1.5 bg-muted/40 rounded-xl px-3 py-2 mx-2 mb-1" style={{ marginLeft: `${(depth + 1) * 12 + 8}px` }}>
+                {newItemType === "file" ? <FilePlus className="h-3.5 w-3.5 text-primary shrink-0" /> : <FolderPlus className="h-3.5 w-3.5 text-primary shrink-0" />}
+                <input
+                  autoFocus
+                  value={newItemName}
+                  onChange={e => setNewItemName(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") void createNewItem(); if (e.key === "Escape") setNewItemParent(null); }}
+                  placeholder={newItemType === "file" ? "filename.ts" : "folder-name"}
+                  className="flex-1 bg-transparent text-xs text-foreground outline-none font-mono"
+                />
+                <button onClick={() => void createNewItem()} disabled={!newItemName.trim() || creatingItem} className="text-primary disabled:opacity-40">
+                  {creatingItem ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                </button>
+                <button onClick={() => setNewItemParent(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+              </div>
+            )}
+            {renderTree(node.path, depth + 1)}
+          </>
+        )}
       </div>
     );
   });
@@ -484,10 +561,27 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                         <span>{repo.toUpperCase()}</span>
                       </div>
                       <div className="hidden group-hover:flex gap-1">
-                        <button className="p-1.5 hover:bg-background rounded-lg text-muted-foreground hover:text-foreground"><FilePlus className="h-3.5 w-3.5" /></button>
-                        <button className="p-1.5 hover:bg-background rounded-lg text-muted-foreground hover:text-foreground"><FolderPlus className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => startNewItem("file", "root")} className="p-1.5 hover:bg-background rounded-lg text-muted-foreground hover:text-foreground" title="New File"><FilePlus className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => startNewItem("folder", "root")} className="p-1.5 hover:bg-background rounded-lg text-muted-foreground hover:text-foreground" title="New Folder"><FolderPlus className="h-3.5 w-3.5" /></button>
                       </div>
                     </div>
+                    {newItemParent !== null && (
+                      <div className="mx-2 mb-2 flex items-center gap-1.5 bg-muted/40 rounded-xl px-3 py-2">
+                        {newItemType === "file" ? <FilePlus className="h-3.5 w-3.5 text-primary shrink-0" /> : <FolderPlus className="h-3.5 w-3.5 text-primary shrink-0" />}
+                        <input
+                          autoFocus
+                          value={newItemName}
+                          onChange={e => setNewItemName(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") void createNewItem(); if (e.key === "Escape") setNewItemParent(null); }}
+                          placeholder={newItemType === "file" ? "filename.ts" : "folder-name"}
+                          className="flex-1 bg-transparent text-xs text-foreground outline-none font-mono"
+                        />
+                        <button onClick={() => void createNewItem()} disabled={!newItemName.trim() || creatingItem} className="text-primary disabled:opacity-40">
+                          {creatingItem ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                        </button>
+                        <button onClick={() => setNewItemParent(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                      </div>
+                    )}
                     {loading ? (
                       <div className="p-3 flex flex-col gap-2">
                         {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-5 bg-muted/40 animate-pulse rounded-lg w-full" />)}
