@@ -113,57 +113,28 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
     <div className="h-full flex flex-col bg-sidebar/95 border-r border-sidebar-border backdrop-blur-xl">
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-sidebar-border">
-        <button
-          onClick={() => navigate("/settings")}
-          className="flex items-center gap-2.5 hover:opacity-90 transition-all hover-scale rounded-lg px-1 py-0.5 min-w-0"
-        >
-          <AvatarBubble
-            letter={profile?.username?.[0]?.toUpperCase() || "A"}
-            status="online"
-            size="sm"
-            imageUrl={profile?.avatar_url}
-          />
-          <div className={`text-left min-w-0 ${sidebarCollapsed ? "hidden" : ""}`}>
-            <p className="text-sm font-semibold text-sidebar-foreground leading-tight">
-              {profile?.display_name || profile?.username || "You"}
-            </p>
-            <p className="text-[10px] text-online font-medium">Online</p>
-          </div>
-        </button>
+        <div className={`flex items-center gap-2 ${sidebarCollapsed ? "hidden" : ""}`}>
+          <h2 className="text-sm font-bold text-sidebar-foreground">Messages</h2>
+          {requestChats.length > 0 && (
+            <span className="bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              {requestChats.length}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           {onToggleSidebarCollapsed && (
             <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
               onClick={onToggleSidebarCollapsed}
               className="hidden lg:flex h-8 w-8 rounded-lg items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
-              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Expand" : "Collapse"}
             >
               {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </motion.button>
           )}
-          <ThemeToggle />
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-            onClick={() => navigate("/dashboard")}
-            className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
-            title="Dashboard"
-          >
-            <LayoutDashboard className="h-4 w-4" />
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-            onClick={() => navigate("/workspace")}
-            className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
-            title="Workspaces"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-            onClick={() => navigate("/settings")}
-            className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
-          >
-            <Settings className="h-4 w-4" />
-          </motion.button>
           <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
             onClick={() => { setShowNewChat(!showNewChat); setSearch(""); }}
             className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-sidebar-foreground"
+            title="New Chat"
           >
             <MessageSquarePlus className="h-4 w-4" />
           </motion.button>
