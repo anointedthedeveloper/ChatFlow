@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Home, LayoutDashboard, MessageSquare, LayoutGrid, Settings, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Home, LayoutDashboard, MessageSquare, LayoutGrid, Settings, LogOut, PanelLeftClose, PanelLeftOpen, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
@@ -40,11 +40,41 @@ const RootLayout = () => {
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
+      {/* Mobile Menu Toggle */}
+      {isMobile && (
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="fixed bottom-6 right-6 z-[60] h-14 w-14 rounded-full gradient-primary shadow-2xl flex items-center justify-center text-white lg:hidden"
+        >
+          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      )}
+
+      {/* Sidebar Overlay */}
+      <AnimatePresence>
+        {isMobile && isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: isCollapsed ? "72px" : "260px" }}
-        className="h-full border-r border-border/50 bg-card/30 backdrop-blur-xl flex flex-col shrink-0 z-50 overflow-hidden shadow-[1px_0_0_0_rgba(0,0,0,0.05)]"
+        animate={{ 
+          width: isMobile ? (isMobileMenuOpen ? "280px" : "0px") : (isCollapsed ? "72px" : "260px"),
+          x: isMobile && !isMobileMenuOpen ? -20 : 0,
+          opacity: isMobile && !isMobileMenuOpen ? 0 : 1
+        }}
+        className={cn(
+          "h-full border-r border-border/50 bg-card/30 backdrop-blur-xl flex flex-col shrink-0 z-50 overflow-hidden shadow-[1px_0_0_0_rgba(0,0,0,0.05)]",
+          isMobile ? "fixed left-0 top-0 bottom-0 border-r-0 shadow-2xl" : "relative"
+        )}
       >
         {/* Header/Logo */}
         <div className="p-4 flex items-center gap-3 border-b border-border/40">
@@ -63,6 +93,14 @@ const RootLayout = () => {
               <span className="text-sm font-bold tracking-tight text-foreground truncate">RepoRoom</span>
               <span className="text-[10px] text-muted-foreground font-medium truncate">Developer Hub</span>
             </motion.div>
+          )}
+          {isMobile && (
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="ml-auto p-2 rounded-xl hover:bg-muted text-muted-foreground lg:hidden"
+            >
+              <X className="h-5 w-5" />
+            </button>
           )}
         </div>
 
