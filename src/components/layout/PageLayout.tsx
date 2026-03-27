@@ -353,9 +353,9 @@ const PageLayout = ({ children, maxWidth = "lg" }: Props) => {
               <p>&copy; 2026 RepoRoom. All rights reserved.</p>
               <p className="flex items-center gap-1">
                 Powered by{" "}
-                <a href="https://github.com/anointedthedeveloper" target="_blank" rel="noopener noreferrer"
+                <a href="https://anobyte.online" target="_blank" rel="noopener noreferrer"
                   className="font-semibold text-foreground hover:text-primary transition-colors">
-                  Anointed the Developer
+                  Anobyte
                 </a>
               </p>
             </div>
