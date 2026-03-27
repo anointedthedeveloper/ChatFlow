@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ArrowRight, Zap, Users, TrendingUp, Gift, Star, Building2, Sparkles } from "lucide-react";
+import { Check, ArrowRight, Zap, Users, TrendingUp, Gift, Star, Building2, Sparkles, Bot, BarChart2, HardDrive, Plug, DollarSign, CalendarDays } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -79,16 +79,16 @@ const PricingPage = () => {
   ];
 
   const addons = [
-    { icon: "🤖", title: "AI Assistant", desc: "Code summaries, PR reviews, and smart message search.", price: "$4/user/mo" },
-    { icon: "📊", title: "Advanced Analytics", desc: "Team productivity dashboards and delivery insights.", price: "$3/user/mo" },
-    { icon: "💾", title: "Extra Storage", desc: "50 GB additional file and attachment storage.", price: "$5/mo" },
-    { icon: "🔗", title: "Premium Integrations", desc: "Linear, Jira, Notion, and Figma deep integrations.", price: "$6/user/mo" },
+    { Icon: Bot,        iconColor: "from-violet-500 to-purple-600", title: "AI Assistant",          desc: "Code summaries, PR reviews, and smart message search.",    price: "$4/user/mo" },
+    { Icon: BarChart2,  iconColor: "from-sky-500 to-blue-600",     title: "Advanced Analytics",    desc: "Team productivity dashboards and delivery insights.",       price: "$3/user/mo" },
+    { Icon: HardDrive,  iconColor: "from-emerald-500 to-teal-600", title: "Extra Storage",          desc: "50 GB additional file and attachment storage.",             price: "$5/mo" },
+    { Icon: Plug,       iconColor: "from-amber-500 to-orange-600", title: "Premium Integrations",  desc: "Linear, Jira, Notion, and Figma deep integrations.",        price: "$6/user/mo" },
   ];
 
   const revenueRows = [
-    { users: "100 users", monthly: "$1,200/mo", yearly: "$14,400/yr" },
-    { users: "1,000 users", monthly: "$12,000/mo", yearly: "$144,000/yr" },
-    { users: "10,000 users", monthly: "$120,000/mo", yearly: "$1.44M/yr" },
+    { users: "100 users",    monthly: "$1,200",   yearly: "$14,400",   yearlyPlan: "$12,000" },
+    { users: "1,000 users",  monthly: "$12,000",  yearly: "$144,000",  yearlyPlan: "$120,000" },
+    { users: "10,000 users", monthly: "$120,000", yearly: "$1,440,000", yearlyPlan: "$1.2M" },
   ];
 
   const faqs = [
@@ -214,24 +214,87 @@ const PricingPage = () => {
         })}
       </div>
 
-      {/* Revenue potential banner */}
+      {/* Revenue potential */}
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         className="rounded-3xl border border-primary/20 bg-primary/5 p-8 mb-16">
-        <div className="flex items-center gap-2 mb-6">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          <p className="text-sm font-bold uppercase tracking-widest text-primary">Revenue potential at $12/user/mo</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {revenueRows.map((row) => (
-            <div key={row.users} className="rounded-2xl border border-border/50 bg-background/60 p-5 text-center">
-              <p className="text-xs text-muted-foreground mb-2">{row.users}</p>
-              <p className="text-2xl font-bold text-foreground">{row.monthly}</p>
-              <p className="text-xs text-emerald-500 mt-1">{row.yearly} yearly</p>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-600 shadow-md">
+              <TrendingUp className="h-4 w-4 text-white" />
             </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">Revenue potential</p>
+              <p className="text-xs text-muted-foreground">Pro plan · $12/user/mo or $10/user/mo yearly</p>
+            </div>
+          </div>
+          {/* Legend */}
+          <div className="flex items-center gap-4 text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <DollarSign className="h-3.5 w-3.5 text-primary" /> Monthly billing
+            </span>
+            <span className="flex items-center gap-1.5 text-emerald-500 font-medium">
+              <CalendarDays className="h-3.5 w-3.5" /> Yearly billing
+            </span>
+          </div>
+        </div>
+
+        {/* Table header */}
+        <div className="grid grid-cols-3 gap-3 mb-3 px-1">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">Users</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 text-center">Monthly / mo</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-500/80 text-center">Yearly / yr</p>
+        </div>
+
+        {/* Rows */}
+        <div className="space-y-3">
+          {revenueRows.map((row, i) => (
+            <motion.div
+              key={row.users}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.32 + i * 0.06 }}
+              className="grid grid-cols-3 gap-3 items-center rounded-2xl border border-border/50 bg-background/70 px-5 py-4"
+            >
+              {/* Users */}
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                  <Users className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">{row.users}</span>
+              </div>
+
+              {/* Monthly */}
+              <div className="text-center">
+                <p className="text-xl font-bold text-foreground">{row.monthly}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">per month</p>
+              </div>
+
+              {/* Yearly */}
+              <div className="text-center">
+                <p className="text-xl font-bold text-emerald-500">{row.yearly}</p>
+                <p className="text-[10px] text-emerald-500/70 mt-0.5">per year</p>
+              </div>
+            </motion.div>
           ))}
         </div>
+
+        {/* Yearly plan callout */}
+        <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <CalendarDays className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-1">Yearly plan advantage</p>
+              <p className="text-xs text-muted-foreground leading-5">
+                At $10/user/mo billed annually, 1,000 users generates <span className="text-emerald-500 font-semibold">$120,000/yr</span> — paid upfront.
+                That's $24,000 more predictable cash vs monthly billing, with lower churn.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <p className="text-xs text-muted-foreground mt-4 text-center">
-          These are real numbers. The Pro plan scales linearly — every user you add is $12/mo in recurring revenue.
+          These are real numbers. Every user you add is $12/mo (or $10/mo yearly) in recurring revenue.
         </p>
       </motion.div>
 
@@ -243,11 +306,13 @@ const PricingPage = () => {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {addons.map((addon) => (
-            <div key={addon.title} className="rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur-xl hover:border-primary/30 transition-colors">
-              <span className="text-2xl mb-3 block">{addon.icon}</span>
+            <div key={addon.title} className="rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur-xl hover:border-primary/30 transition-colors group">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${addon.iconColor} shadow-md mb-4 group-hover:scale-105 transition-transform`}>
+                <addon.Icon className="h-5 w-5 text-white" />
+              </div>
               <p className="text-sm font-semibold text-foreground mb-1">{addon.title}</p>
               <p className="text-xs text-muted-foreground leading-5 mb-3">{addon.desc}</p>
-              <span className="text-xs font-bold text-primary">{addon.price}</span>
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{addon.price}</span>
             </div>
           ))}
         </div>
