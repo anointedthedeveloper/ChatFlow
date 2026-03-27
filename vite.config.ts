@@ -6,6 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
   server: { host: "::", port: 8080, hmr: { overlay: false } },
+  build: { chunkSizeWarningLimit: 2000 },
   plugins: [
     react(),
     mode === "development" && componentTagger(),

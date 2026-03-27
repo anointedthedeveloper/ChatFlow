@@ -3,7 +3,6 @@ import {
   BookOpen,
   Check,
   CheckCheck,
-  FileText,
   Github,
   Info,
   LayoutDashboard,
@@ -22,9 +21,8 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
 import useSEO from "@/hooks/useSEO";
