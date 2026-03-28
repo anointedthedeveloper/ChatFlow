@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { MessageSquare } from "lucide-react";
 
 const PageLoader = () => (
   <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background">
@@ -7,9 +6,20 @@ const PageLoader = () => (
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex h-16 w-16 items-center justify-center rounded-3xl gradient-primary shadow-[0_20px_50px_hsl(var(--primary)/0.35)]"
+      className="h-16 w-16 rounded-3xl overflow-hidden shadow-[0_20px_50px_hsl(var(--primary)/0.35)]"
     >
-      <MessageSquare className="h-7 w-7 text-primary-foreground" />
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className="h-full w-full">
+        <rect width="100" height="100" rx="22" fill="#0f1117"/>
+        <rect x="8" y="14" width="78" height="68" rx="10" fill="#1c2030" stroke="#2a2f42" strokeWidth="1.5"/>
+        <rect x="8" y="14" width="78" height="22" rx="10" fill="#252a3d"/>
+        <rect x="8" y="26" width="78" height="10" fill="#252a3d"/>
+        <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
+        <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
+        <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
+        <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
+      </svg>
     </motion.div>
     <div className="mt-6 flex items-center gap-1.5">
       {[0, 1, 2].map((i) => (
