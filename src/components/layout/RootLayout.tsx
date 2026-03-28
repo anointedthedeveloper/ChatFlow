@@ -10,22 +10,22 @@ import { useThemeContext } from "@/context/ThemeContext";
 
 const FaviconLogo = ({ className }: { className?: string }) => {
   const { mode } = useThemeContext();
-  const bg = mode === "light" ? "#f0f4ff" : "#0d1117";
-  const panel = mode === "light" ? "#ffffff" : "#161b22";
-  const bar = mode === "light" ? "#e2e8f0" : "#21262d";
-  const border = mode === "light" ? "#cbd5e1" : "#30363d";
+  const bg     = mode === "light" ? "#e8edf5" : "#0f1117";
+  const panel  = mode === "light" ? "#f8faff" : "#1c2030";
+  const bar    = mode === "light" ? "#dde3ef" : "#252a3d";
+  const border = mode === "light" ? "#c4cfe0" : "#2a2f42";
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" className={className}>
-      <rect width="32" height="32" rx="8" fill={bg}/>
-      <rect x="4" y="5" width="24" height="22" rx="4" fill={panel} stroke={border} strokeWidth="1"/>
-      <rect x="4" y="5" width="24" height="6" rx="4" fill={bar}/>
-      <rect x="8" y="5" width="24" height="3" fill={bar}/>
-      <circle cx="9" cy="8" r="1.5" fill="#ff5f57"/>
-      <circle cx="14" cy="8" r="1.5" fill="#febc2e"/>
-      <circle cx="19" cy="8" r="1.5" fill="#28c840"/>
-      <path d="M8 18.5 L12 16 L8 13.5" stroke="#58a6ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M24 18.5 L20 16 L24 13.5" stroke="#58a6ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="17.5" y1="12.5" x2="14.5" y2="19.5" stroke="#3fb950" strokeWidth="1.8" strokeLinecap="round"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className={className}>
+      <rect width="100" height="100" rx="22" fill={bg}/>
+      <rect x="8" y="14" width="78" height="68" rx="10" fill={panel} stroke={border} strokeWidth="1.5"/>
+      <rect x="8" y="14" width="78" height="22" rx="10" fill={bar}/>
+      <rect x="8" y="26" width="78" height="10" fill={bar}/>
+      <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
+      <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
+      <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
+      <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
     </svg>
   );
 };
