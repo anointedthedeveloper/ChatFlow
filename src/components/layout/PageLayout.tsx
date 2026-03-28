@@ -6,27 +6,20 @@ import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
 
-const FaviconLogo = ({ className }: { className?: string }) => {
-  const { mode } = useThemeContext();
-  const bg     = mode === "light" ? "#e8edf5" : "#0f1117";
-  const panel  = mode === "light" ? "#f8faff" : "#1c2030";
-  const bar    = mode === "light" ? "#dde3ef" : "#252a3d";
-  const border = mode === "light" ? "#c4cfe0" : "#2a2f42";
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className={className}>
-      <rect width="100" height="100" rx="22" fill={bg}/>
-      <rect x="8" y="14" width="78" height="68" rx="10" fill={panel} stroke={border} strokeWidth="1.5"/>
-      <rect x="8" y="14" width="78" height="22" rx="10" fill={bar}/>
-      <rect x="8" y="26" width="78" height="10" fill={bar}/>
-      <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
-      <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
-      <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
-      <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
-    </svg>
-  );
-};
+const FaviconLogo = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className={className}>
+    <rect width="100" height="100" rx="22" fill="#0f1117"/>
+    <rect x="8" y="14" width="78" height="68" rx="10" fill="#1c2030" stroke="#2a2f42" strokeWidth="1.5"/>
+    <rect x="8" y="14" width="78" height="22" rx="10" fill="#252a3d"/>
+    <rect x="8" y="26" width="78" height="10" fill="#252a3d"/>
+    <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
+    <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
+    <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
+    <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+    <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
+  </svg>
+);
 
 const navLinks = [
   { label: "Features",  path: "/features" },
