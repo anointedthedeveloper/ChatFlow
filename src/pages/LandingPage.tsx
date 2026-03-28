@@ -7,7 +7,6 @@ import {
   Info,
   LayoutDashboard,
   Map,
-  MessageSquare,
   Monitor,
   Moon,
   PenLine,
@@ -140,8 +139,19 @@ const LandingPage = () => {
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 sm:px-6 py-4 sm:py-6 lg:px-10">
         <header className="sticky top-4 z-50 flex items-center justify-between rounded-2xl border border-border/70 bg-card/70 px-4 py-3 backdrop-blur-xl shadow-lg shadow-black/5">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-primary shadow-[0_14px_30px_hsl(var(--primary)/0.28)]">
-              <MessageSquare className="h-5 w-5 text-primary-foreground" />
+            <div className="h-11 w-11 rounded-2xl overflow-hidden shadow-[0_14px_30px_hsl(var(--primary)/0.28)] shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className="h-full w-full">
+                <rect width="100" height="100" rx="22" fill="#0f1117"/>
+                <rect x="8" y="14" width="78" height="68" rx="10" fill="#1c2030" stroke="#2a2f42" strokeWidth="1.5"/>
+                <rect x="8" y="14" width="78" height="22" rx="10" fill="#252a3d"/>
+                <rect x="8" y="26" width="78" height="10" fill="#252a3d"/>
+                <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
+                <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
+                <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
+                <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
+              </svg>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -555,8 +565,19 @@ const LandingPage = () => {
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 mb-12">
             <div className="col-span-1 sm:col-span-2">
               <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-                  <MessageSquare className="h-5 w-5 text-primary-foreground" />
+                <div className="h-10 w-10 rounded-xl overflow-hidden shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className="h-full w-full">
+                    <rect width="100" height="100" rx="22" fill="#0f1117"/>
+                    <rect x="8" y="14" width="78" height="68" rx="10" fill="#1c2030" stroke="#2a2f42" strokeWidth="1.5"/>
+                    <rect x="8" y="14" width="78" height="22" rx="10" fill="#252a3d"/>
+                    <rect x="8" y="26" width="78" height="10" fill="#252a3d"/>
+                    <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
+                    <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
+                    <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
+                    <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                    <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
+                  </svg>
                 </div>
                 <span className="text-lg font-bold text-foreground">RepoRoom</span>
               </div>
